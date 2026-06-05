@@ -130,6 +130,67 @@ impl Default for State {
     }
 }
 
+#[allow(dead_code)]
+fn read_line<R: BufRead>(r: &mut R) -> io::Result<String> {
+    let mut line = String::new();
+    r.read_line(&mut line)?;
+    Ok(line.trim_end_matches(&['\n', '\r'][..]).to_owned())
+}
+
+#[allow(dead_code)]
+fn prompt_index<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<usize> {
+    write!(w, "Enter index: ")?;
+    w.flush()?;
+    Ok(read_line(r)?.trim().parse().unwrap_or(usize::MAX))
+}
+
+#[allow(dead_code)]
+fn prompt_bytes<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<Vec<u8>> {
+    write!(w, "Enter data (hex): ")?;
+    w.flush()?;
+    let n: usize = read_line(r)?.trim().parse().unwrap_or(0);
+    let n = n.clamp(1, BUFFER_SIZE);
+    let mut buf = vec![0u8; n];
+    r.read_exact(&mut buf)?;
+    Ok(buf)
+}
+
+#[allow(dead_code)]
+fn hexdump<W: Write>(w: &mut W, data: &[u8]) -> io::Result<()> {
+    for (row_index, row) in data.chunks(16).enumerate() {
+        write!(w, "{:04x}: ", row_index * 16)?;
+
+        for (index, byte) in row.iter().enumerate() {
+            if index == 8 {
+                write!(w, " ")?; // Extra space in the middle
+            }
+            write!(w, "{:02x} ", byte)?;
+        }
+
+        let padding = 16 - row.len();
+        for i in 0..padding {
+            if row.len() + i == 8 {
+                write!(w, " ")?; // Extra space in the middle
+            }
+            write!(w, "   ")?; // 3 spaces for each missing byte
+        }
+
+        write!(w, " |")?;
+
+        for &byte in row {
+            let c = if byte.is_ascii_graphic() || byte.is_ascii_whitespace() {
+                byte as char
+            } else {
+                '.'
+            };
+            write!(w, "{}", c)?;
+        }
+
+        writeln!(w, "|")?;
+    }
+    Ok(())
+}
+
 pub fn run<R: BufRead, W: Write>(_r: &mut R, _w: &mut W) -> Result<(), Error> {
     todo!()
 }
