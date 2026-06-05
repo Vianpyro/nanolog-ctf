@@ -191,6 +191,80 @@ fn hexdump<W: Write>(w: &mut W, data: &[u8]) -> io::Result<()> {
     Ok(())
 }
 
-pub fn run<R: BufRead, W: Write>(_r: &mut R, _w: &mut W) -> Result<(), Error> {
-    todo!()
+pub fn run<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<()> {
+    let mut state = State::new();
+
+    writeln!(w, "NanoLog v0.3 -- [CHEF]'s Activity Logger")?;
+    writeln!(w)?;
+    loop {
+        writeln!(w, "1) New log")?;
+        writeln!(w, "2) Show log")?;
+        writeln!(w, "3) Edit log")?;
+        writeln!(w, "4) Drop log")?;
+        writeln!(w, "5) New ref")?;
+        writeln!(w, "6) Show ref")?;
+        writeln!(w, "7) Edit ref")?;
+        writeln!(w, "0) Quit")?;
+        write!(w, "> ")?;
+        w.flush()?;
+
+        let line = read_line(r)?;
+        if line.is_empty() {
+            continue;
+        }
+
+        match line.trim().parse::<u8>().unwrap_or(255) {
+            0 => {
+                writeln!(w, "Bye.")?;
+                break;
+            }
+            1 => match state.log_new() {
+                Ok(index) => writeln!(w, "Created log #{}", index)?,
+                Err(e) => writeln!(w, "Error: {}", e)?,
+            },
+            2 => {
+                let index = prompt_index(r, w)?;
+                match state.log_show(index) {
+                    Ok(data) => hexdump(w, data)?,
+                    Err(e) => writeln!(w, "Error: {}", e)?,
+                }
+            }
+            3 => {
+                let index = prompt_index(r, w)?;
+                let data = prompt_bytes(r, w)?;
+                match state.log_edit(index, &data) {
+                    Ok(()) => writeln!(w, "Log #{} updated.", index)?,
+                    Err(e) => writeln!(w, "Error: {}", e)?,
+                }
+            }
+            4 => {
+                let index = prompt_index(r, w)?;
+                match state.log_drop(index) {
+                    Ok(()) => writeln!(w, "Log #{} dropped.", index)?,
+                    Err(e) => writeln!(w, "Error: {}", e)?,
+                }
+            }
+            5 => match state.red_new() {
+                Ok(index) => writeln!(w, "Created ref #{}", index)?,
+                Err(e) => writeln!(w, "Error: {}", e)?,
+            },
+            6 => {
+                let index = prompt_index(r, w)?;
+                match state.ref_show(index) {
+                    Ok(data) => hexdump(w, data)?,
+                    Err(e) => writeln!(w, "Error: {}", e)?,
+                }
+            }
+            7 => {
+                let index = prompt_index(r, w)?;
+                let data = prompt_bytes(r, w)?;
+                match state.ref_edit(index, &data) {
+                    Ok(()) => writeln!(w, "Ref #{} updated.", index)?,
+                    Err(e) => writeln!(w, "Error: {}", e)?,
+                }
+            }
+            _ => writeln!(w, "Unknown command.")?,
+        }
+    }
+    Ok(())
 }
