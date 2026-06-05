@@ -4,6 +4,7 @@ FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
     bash \
     git \
+    gh \
     curl \
     ca-certificates \
     python3 \
