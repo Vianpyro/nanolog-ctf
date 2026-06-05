@@ -32,7 +32,7 @@ ENV RUSTUP_HOME=/home/${USERNAME}/.rustup \
     PATH=/home/${USERNAME}/.cargo/bin:$PATH
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-    | sh -s -- -y --default-toolchain stable --profile default \
+    | sh -s -- -y --default-toolchain 1.79.0 --profile default \
     && rustup component add rust-src rustfmt
 
 WORKDIR /workspace
