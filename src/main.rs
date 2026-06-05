@@ -33,9 +33,51 @@ pub struct State {
 
 impl State {
     pub fn new() -> Self {
-        State {
+        Self {
             logs: Vec::with_capacity(MAX_LOGS),
             refs: Vec::with_capacity(MAX_REFS),
+        }
+    }
+
+    pub fn log_new(&mut self) -> Result<usize, Error> {
+        if self.logs.len() >= MAX_LOGS {
+            return Err(Error::Full);
+        }
+
+        self.logs.push(Some(Box::new([0u8; BUFFER_SIZE])));
+
+        Ok(self.logs.len() - 1)
+    }
+
+    pub fn log_show(&self, index: usize) -> Result<&[u8; BUFFER_SIZE], Error> {
+        match self.logs.get(index) {
+            Some(Some(b)) => Ok(b),
+            Some(None) => Err(Error::Deleted),
+            None => Err(Error::OutOfRange),
+        }
+    }
+
+    pub fn log_edit(&mut self, index: usize, data: &[u8]) -> Result<(), Error> {
+        match self.logs.get_mut(index) {
+            Some(Some(b)) => {
+                let n = data.len().min(BUFFER_SIZE);
+                b[..n].copy_from_slice(&data[..n]);
+                b[..n].fill(0);
+                Ok(())
+            }
+            Some(None) => Err(Error::Deleted),
+            None => Err(Error::OutOfRange),
+        }
+    }
+
+    pub fn log_drop(&mut self, index: usize) -> Result<(), Error> {
+        match self.logs.get_mut(index) {
+            Some(slot @ Some(_)) => {
+                *slot = None;
+                Ok(())
+            }
+            Some(None) => Err(Error::Deleted),
+            None => Err(Error::OutOfRange),
         }
     }
 }
