@@ -268,3 +268,122 @@ pub fn run<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<()> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+
+    fn session(input: &[u8]) -> String {
+        let mut r = Cursor::new(input.to_vec());
+        let mut w = Vec::new();
+        run(&mut r, &mut w).unwrap();
+        String::from_utf8_lossy(&w).into_owned()
+    }
+
+    fn edit_cmd(cmd: u8, index: usize, data: &[u8]) -> Vec<u8> {
+        let mut v = format!("{cmd}\\n{index}\\n{}\\n", data.len()).into_bytes();
+        v.extend_from_slice(data);
+        v
+    }
+    #[test]
+    fn state_log_new_sequential_indices() {
+        let mut state = State::new();
+        assert_eq!(state.log_new(), Ok(0));
+        assert_eq!(state.log_new(), Ok(1));
+    }
+
+    #[test]
+    fn state_log_show_default_zeroed() {
+        let mut state = State::new();
+        state.log_new().unwrap();
+        assert_eq!(state.log_show(0).unwrap(), &[0u8; BUFFER_SIZE]);
+    }
+
+    #[test]
+    fn state_log_edit_writes_data() {
+        let mut state = State::new();
+        state.log_new().unwrap();
+        state.log_edit(0, b"Hello").unwrap();
+        assert_eq!(&state.log_show(0).unwrap()[..5], b"Hello");
+    }
+
+    #[test]
+    fn state_log_edit_short_data_zeroes_tail() {
+        let mut state = State::new();
+        state.log_new().unwrap();
+        state.log_edit(0, &[0xffu8; BUFFER_SIZE]).unwrap();
+        state.log_edit(0, b"Hi").unwrap();
+        let buffer = state.log_show(0).unwrap();
+        assert_eq!(&buffer[..2], b"Hi");
+        assert!(buffer[2..].iter().all(|&b| b == 0));
+    }
+
+    #[test]
+    fn state_log_edit_clamps_to_buffer_size() {
+        let mut state = State::new();
+        state.log_new().unwrap();
+        state.log_edit(0, &vec![0xAAu8; BUFFER_SIZE + 32]).unwrap();
+        assert_eq!(state.log_show(0).unwrap(), &[0xAAu8; BUFFER_SIZE]);
+    }
+
+    #[test]
+    fn state_log_drop_prevents_read() {
+        let mut state = State::new();
+        state.log_new().unwrap();
+        state.log_drop(0).unwrap();
+        assert_eq!(state.log_show(0), Err(Error::Deleted));
+    }
+
+    #[test]
+    fn state_log_drop_prevents_write() {
+        let mut state = State::new();
+        state.log_new().unwrap();
+        state.log_drop(0).unwrap();
+        assert_eq!(state.log_edit(0, b"X"), Err(Error::Deleted));
+    }
+
+    #[test]
+    fn state_log_double_drop_error() {
+        let mut state = State::new();
+        state.log_new().unwrap();
+        state.log_drop(0).unwrap();
+        assert_eq!(state.log_drop(0), Err(Error::Deleted));
+    }
+
+    #[test]
+    fn state_full_log_rejects_new() {
+        let mut state = State::new();
+        for _ in 0..MAX_LOGS {
+            state.log_new().unwrap();
+        }
+        assert_eq!(state.log_new(), Err(Error::Full));
+    }
+
+    #[test]
+    fn state_oob_read_error() {
+        let state = State::new();
+        assert_eq!(state.log_show(0), Err(Error::OutOfRange));
+    }
+
+    #[test]
+    fn state_oob_edit_errors() {
+        let mut state = State::new();
+        assert_eq!(state.log_edit(0, b"X"), Err(Error::OutOfRange));
+    }
+
+    #[test]
+    fn state_ref_new_sequential_indices() {
+        let mut state = State::new();
+        assert_eq!(state.red_new(), Ok(0));
+        assert_eq!(state.red_new(), Ok(1));
+    }
+
+    #[test]
+    fn state_ref_edit_writes_data() {
+        let mut state = State::new();
+        state.red_new().unwrap();
+        state.ref_edit(0, b"Hello").unwrap();
+        assert_eq!(&state.ref_show(0).unwrap()[..5], b"Hello");
+    }
+}
