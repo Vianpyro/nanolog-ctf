@@ -316,7 +316,7 @@ mod tests {
     fn state_log_edit_clamps_to_buffer_size() {
         let mut state = State::new();
         state.log_new().unwrap();
-        state.log_edit(0, &vec![0xAAu8; BUFFER_SIZE + 32]).unwrap();
+        state.log_edit(0, &[0xAAu8; BUFFER_SIZE + 32]).unwrap();
         assert_eq!(state.log_show(0).unwrap(), &[0xAAu8; BUFFER_SIZE]);
     }
 
