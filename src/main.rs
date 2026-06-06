@@ -98,7 +98,7 @@ impl State {
         }
     }
 
-    pub fn red_new(&mut self) -> Result<usize, Error> {
+    pub fn ref_new(&mut self) -> Result<usize, Error> {
         if self.refs.len() >= MAX_REFS {
             return Err(Error::Full);
         }
@@ -131,21 +131,21 @@ impl Default for State {
 }
 
 #[allow(dead_code)]
-fn read_line<R: BufRead>(r: &mut R) -> io::Result<String> {
+fn read_line<R: BufRead>(r: &mut R) -> std::io::Result<String> {
     let mut line = String::new();
     r.read_line(&mut line)?;
     Ok(line.trim_end_matches(&['\n', '\r'][..]).to_owned())
 }
 
 #[allow(dead_code)]
-fn prompt_index<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<usize> {
+fn prompt_index<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> std::io::Result<usize> {
     write!(w, "Enter index: ")?;
     w.flush()?;
     Ok(read_line(r)?.trim().parse().unwrap_or(usize::MAX))
 }
 
 #[allow(dead_code)]
-fn prompt_bytes<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<Vec<u8>> {
+fn prompt_bytes<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> std::io::Result<Vec<u8>> {
     write!(w, "Enter data (hex): ")?;
     w.flush()?;
     let n: usize = read_line(r)?.trim().parse().unwrap_or(0);
@@ -156,7 +156,7 @@ fn prompt_bytes<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<Vec<u8
 }
 
 #[allow(dead_code)]
-fn hexdump<W: Write>(w: &mut W, data: &[u8]) -> io::Result<()> {
+fn hexdump<W: Write>(w: &mut W, data: &[u8]) -> std::io::Result<()> {
     for (row_index, row) in data.chunks(16).enumerate() {
         write!(w, "{:04x}: ", row_index * 16)?;
 
@@ -191,7 +191,7 @@ fn hexdump<W: Write>(w: &mut W, data: &[u8]) -> io::Result<()> {
     Ok(())
 }
 
-pub fn run<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<()> {
+pub fn run<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> std::io::Result<()> {
     let mut state = State::new();
 
     writeln!(w, "NanoLog v0.3 -- [CHEF]'s Activity Logger")?;
@@ -244,7 +244,7 @@ pub fn run<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<()> {
                     Err(e) => writeln!(w, "Error: {}", e)?,
                 }
             }
-            5 => match state.red_new() {
+            5 => match state.ref_new() {
                 Ok(index) => writeln!(w, "Created ref #{}", index)?,
                 Err(e) => writeln!(w, "Error: {}", e)?,
             },
@@ -344,7 +344,7 @@ mod tests {
     }
 
     #[test]
-    fn state_log_double_drop_error() {
+    fn state_log_double_drop_errors() {
         let mut state = State::new();
         state.log_new().unwrap();
         state.log_drop(0).unwrap();
@@ -352,7 +352,7 @@ mod tests {
     }
 
     #[test]
-    fn state_full_log_rejects_new() {
+    fn state_log_full_rejects_new() {
         let mut state = State::new();
         for _ in 0..MAX_LOGS {
             state.log_new().unwrap();
@@ -361,28 +361,30 @@ mod tests {
     }
 
     #[test]
-    fn state_oob_read_error() {
+    fn state_oob_read_errors() {
         let state = State::new();
         assert_eq!(state.log_show(0), Err(Error::OutOfRange));
+        assert_eq!(state.ref_show(0), Err(Error::OutOfRange));
     }
 
     #[test]
     fn state_oob_edit_errors() {
         let mut state = State::new();
         assert_eq!(state.log_edit(0, b"X"), Err(Error::OutOfRange));
+        assert_eq!(state.ref_edit(0, b"X"), Err(Error::OutOfRange));
     }
 
     #[test]
     fn state_ref_new_sequential_indices() {
         let mut state = State::new();
-        assert_eq!(state.red_new(), Ok(0));
-        assert_eq!(state.red_new(), Ok(1));
+        assert_eq!(state.ref_new(), Ok(0));
+        assert_eq!(state.ref_new(), Ok(1));
     }
 
     #[test]
     fn state_ref_edit_writes_data() {
         let mut state = State::new();
-        state.red_new().unwrap();
+        state.ref_new().unwrap();
         state.ref_edit(0, b"Hello").unwrap();
         assert_eq!(&state.ref_show(0).unwrap()[..5], b"Hello");
     }
