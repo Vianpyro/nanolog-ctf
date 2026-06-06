@@ -1,6 +1,6 @@
-use std::io::{BufRead, Write};
+use std::io::{self, BufRead, Write};
 
-pub const BUFFER_SIZE: usize = 64;
+pub const BUFFER_SIZE: usize = 144;
 pub const MAX_LOGS: usize = 10;
 pub const MAX_REFS: usize = 10;
 
@@ -390,7 +390,48 @@ mod tests {
     fn state_ref_edit_writes_data() {
         let mut state = State::new();
         state.ref_new().unwrap();
+        state.log_new().unwrap();
         state.ref_edit(0, b"Hello").unwrap();
         assert_eq!(&state.ref_show(0).unwrap()[..5], b"Hello");
+    }
+
+    #[test]
+    fn state_ref_full_rejects_new() {
+        let mut state = State::new();
+        for _ in 0..MAX_REFS {
+            state.ref_new().unwrap();
+        }
+        assert_eq!(state.ref_new(), Err(Error::Full));
+    }
+
+    #[test]
+    fn uaf_ref_aliases_subsequent_log() {
+        let shared = alloc_ref();
+        let mut owned = Box::new([0u8; BUFFER_SIZE]);
+        owned[0] = 0xca;
+        owned[1] = 0xfe;
+        owned[2] = 0xba;
+        owned[3] = 0xbe;
+        assert_eq!(shared[..4], [0xca, 0xfe, 0xba, 0xbe]);
+        drop(owned);
+    }
+
+    #[test]
+    fn uaf_ref_observes_log_write() {
+        let mut state = State::new();
+        state.ref_new().unwrap();
+        state.log_new().unwrap();
+        state.log_edit(0, &[0xdeu8; BUFFER_SIZE]).unwrap();
+        assert_eq!(state.ref_show(0).unwrap(), &[0xdeu8; BUFFER_SIZE]);
+    }
+
+    #[test]
+    fn uaf_ref_write_visible_in_log() {
+        let mut state = State::new();
+        state.ref_new().unwrap();
+        state.log_new().unwrap();
+        state.log_edit(0, b"original").unwrap();
+        state.ref_edit(0, b"patched").unwrap();
+        assert_eq!(&state.log_show(0).unwrap()[..7], b"patched");
     }
 }
