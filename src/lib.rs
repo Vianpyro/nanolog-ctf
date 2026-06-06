@@ -144,6 +144,8 @@ fn prompt_bytes<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<Vec<u8
     let n = n.clamp(1, BUFFER_SIZE);
     let mut buf = vec![0u8; n];
     r.read_exact(&mut buf)?;
+    let mut discard = String::new();
+    r.read_line(&mut discard)?;
     Ok(buf)
 }
 
