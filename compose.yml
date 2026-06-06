@@ -4,9 +4,9 @@ services:
     restart: unless-stopped
     ports:
       - "1337:1337"
-    pid: host   # Container escape vulnerability
+    # pid: host   # Container escape vulnerability | Waiting on greenlight from infrastructure team
     read_only: true
     tmpfs:
-      - /tmp
+     - /tmp
     cap_drop:
-      - ALL
+     - ALL
