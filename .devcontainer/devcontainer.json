@@ -1,5 +1,5 @@
 {
-    "name": "Cisterian Encryption - CTF Challenge",
+    "name": "Unsafe safe log app - CTF Challenge",
     "dockerFile": "Dockerfile",
     "customizations": {
         "vscode": {
