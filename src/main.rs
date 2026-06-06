@@ -3,12 +3,15 @@ use std::io::{BufRead, Write};
 pub const BUFFER_SIZE: usize = 64;
 pub const MAX_LOGS: usize = 10;
 pub const MAX_REFS: usize = 10;
+
+#[allow(dead_code)]
 const ANCHOR: &&() = &&();
 
 fn main() {
     println!("Hello, world!");
 }
 
+#[allow(dead_code)]
 fn extend_lifetime<'call, 'extended, T: ?Sized>(x: &'call mut T) -> &'extended mut T {
     fn coerce<'call, 'extended, T: ?Sized>(
         _: &'call &'extended (),
@@ -131,21 +134,21 @@ impl Default for State {
 }
 
 #[allow(dead_code)]
-fn read_line<R: BufRead>(r: &mut R) -> std::io::Result<String> {
+fn read_line<R: BufRead>(r: &mut R) -> io::Result<String> {
     let mut line = String::new();
     r.read_line(&mut line)?;
     Ok(line.trim_end_matches(&['\n', '\r'][..]).to_owned())
 }
 
 #[allow(dead_code)]
-fn prompt_index<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> std::io::Result<usize> {
+fn prompt_index<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<usize> {
     write!(w, "Enter index: ")?;
     w.flush()?;
     Ok(read_line(r)?.trim().parse().unwrap_or(usize::MAX))
 }
 
 #[allow(dead_code)]
-fn prompt_bytes<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> std::io::Result<Vec<u8>> {
+fn prompt_bytes<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<Vec<u8>> {
     write!(w, "Enter data (hex): ")?;
     w.flush()?;
     let n: usize = read_line(r)?.trim().parse().unwrap_or(0);
@@ -156,7 +159,7 @@ fn prompt_bytes<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> std::io::Result<V
 }
 
 #[allow(dead_code)]
-fn hexdump<W: Write>(w: &mut W, data: &[u8]) -> std::io::Result<()> {
+fn hexdump<W: Write>(w: &mut W, data: &[u8]) -> io::Result<()> {
     for (row_index, row) in data.chunks(16).enumerate() {
         write!(w, "{:04x}: ", row_index * 16)?;
 
@@ -191,7 +194,7 @@ fn hexdump<W: Write>(w: &mut W, data: &[u8]) -> std::io::Result<()> {
     Ok(())
 }
 
-pub fn run<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> std::io::Result<()> {
+pub fn run<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<()> {
     let mut state = State::new();
 
     writeln!(w, "NanoLog v0.3 -- [CHEF]'s Activity Logger")?;
@@ -274,6 +277,7 @@ mod tests {
     use super::*;
     use std::io::Cursor;
 
+    #[allow(dead_code)]
     fn session(input: &[u8]) -> String {
         let mut r = Cursor::new(input.to_vec());
         let mut w = Vec::new();
@@ -281,6 +285,7 @@ mod tests {
         String::from_utf8_lossy(&w).into_owned()
     }
 
+    #[allow(dead_code)]
     fn edit_cmd(cmd: u8, index: usize, data: &[u8]) -> Vec<u8> {
         let mut v = format!("{cmd}\\n{index}\\n{}\\n", data.len()).into_bytes();
         v.extend_from_slice(data);
