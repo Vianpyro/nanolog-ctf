@@ -5,3 +5,11 @@ edition = "2021"
 
 [toolchain]
 channel = "1.79.0"
+
+[lib]
+name = "nanolog"
+path = "src/lib.rs"
+
+[[bin]]
+name = "nanolog"
+path = "src/main.rs"
