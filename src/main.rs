@@ -82,7 +82,7 @@ impl State {
             Some(Some(b)) => {
                 let n = data.len().min(BUFFER_SIZE);
                 b[..n].copy_from_slice(&data[..n]);
-                b[..n].fill(0);
+                b[n..].fill(0);
                 Ok(())
             }
             Some(None) => Err(Error::Deleted),
@@ -119,7 +119,7 @@ impl State {
             Some(r) => {
                 let n = data.len().min(BUFFER_SIZE);
                 r[..n].copy_from_slice(&data[..n]);
-                r[..n].fill(0);
+                r[n..].fill(0);
                 Ok(())
             }
             None => Err(Error::OutOfRange),
