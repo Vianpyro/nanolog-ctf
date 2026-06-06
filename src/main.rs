@@ -181,7 +181,7 @@ fn hexdump<W: Write>(w: &mut W, data: &[u8]) -> io::Result<()> {
         write!(w, " |")?;
 
         for &byte in row {
-            let c = if byte.is_ascii_graphic() || byte.is_ascii_whitespace() {
+            let c = if byte.is_ascii_graphic() || byte == b' ' {
                 byte as char
             } else {
                 '.'
