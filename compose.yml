@@ -1,0 +1,12 @@
+services:
+  nanolog:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "1337:1337"
+    pid: host
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL

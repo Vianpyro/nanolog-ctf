@@ -3,8 +3,12 @@ name = "nanolog"
 version = "0.1.0"
 edition = "2021"
 
-[toolchain]
-channel = "1.79.0"
+[profile.release]
+strip = "symbols"
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
 
 [lib]
 name = "nanolog"
