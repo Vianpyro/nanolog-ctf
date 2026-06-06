@@ -1,0 +1,62 @@
+name: Unsound Memories
+author: Vianpyro
+category: PWN
+
+description: |
+  🇫🇷 Claude GPT avait ses propres idées sur la durée de vie des variables.
+  Son service de journalisation tourne encore quelque part dans le camp.
+
+  🇬🇧 Claude GPT had his own ideas about variable lifetimes.
+  His logging service is still running somewhere in the camp.
+
+  `nc <host> 1337`
+
+attribution: "Written by Vianpyro"
+
+type: dynamic
+extra:
+  initial: 500
+  decay: 100
+  minimum: 20
+
+solution:
+  path: solution/README.md
+  state: hidden
+
+flags:
+  - {
+      type: "static",
+      content: "DCI{N4n0L0g_S0undne55_H0le_a2e93df94ff2}",
+      data: "case_sensitive"
+    }
+
+topics:
+  - heap
+  - tcache
+  - use-after-free
+  - rust
+  - glibc-2.35
+  - container-escape
+
+tags:
+  - heap
+  - tcache
+  - use-after-free
+  - rust
+  - glibc-2.35
+  - container-escape
+
+files:
+  - src/
+
+hints:
+  - content: "Rust garantit la sûreté mémoire *si et seulement si* le compilateur accepte votre code pour les bonnes raisons."
+  - content: "safe-linking (glibc 2.32+) : le pointeur stocké dans tcache n'est pas l'adresse brute. Et `__free_hook` a disparu en 2.34."
+  - content: "Tu es root dans le conteneur mais le flag n'est pas dedans. Qu'est-ce que `cat /proc/1/cmdline` te dit ?"
+
+requirements:
+  - docker
+  - rust
+
+next: null
+version: 1.0.0

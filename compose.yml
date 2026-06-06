@@ -4,7 +4,7 @@ services:
     restart: unless-stopped
     ports:
       - "1337:1337"
-    pid: host
+    pid: host   # Container escape vulnerability
     read_only: true
     tmpfs:
       - /tmp
