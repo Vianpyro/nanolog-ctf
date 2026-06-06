@@ -213,7 +213,7 @@ pub fn run<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<()> {
 
         let line = read_line(r)?;
         if line.is_empty() {
-            continue;
+            break;
         }
 
         match line.trim().parse::<u8>().unwrap_or(255) {
