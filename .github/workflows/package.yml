@@ -46,13 +46,13 @@ jobs:
         with:
           generate_release_notes: true
           body: |
-            Docker image:
+            ## Docker image:
 
             ```
             docker pull ghcr.io/${{ github.repository }}:${{ github.ref_name }}
             ```
 
-            Run:
+            ## Run:
 
             ```
             docker run --rm -p 1337:1337 \

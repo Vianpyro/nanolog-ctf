@@ -242,7 +242,7 @@ fn hexdump<W: Write>(w: &mut W, data: &[u8]) -> io::Result<()> {
 pub fn run<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<()> {
     let mut state = State::new();
 
-    writeln!(w, "NanoLog v0.3 -- [C.GPT]'s Activity Logger")?;
+    writeln!(w, "[Claude G.P.T.]'s Activity Logger")?;
     writeln!(w)?;
     loop {
         writeln!(w, "1) New log")?;

@@ -3,21 +3,37 @@ author: Vianpyro
 category: PWN
 
 description: |
-  🇫🇷 Claude GPT avait ses propres idées sur la durée de vie des variables.
-  Son service de journalisation tourne encore quelque part dans le camp.
+  🇫🇷 Les moniteurs ont retrouvé une copie de NanoLog sur un ancien ordinateur de Claude.
 
-  🇬🇧 Claude GPT had his own ideas about variable lifetimes.
-  His logging service is still running somewhere in the camp.
+  Les journaux semblent avoir été effacés peu avant sa disparition.
 
-  `nc <host> 1337`
+  Selon plusieurs témoignages, Claude utilisait cet outil pour conserver ses observations sur les étranges phénomènes observés autour du lac Pas Beaucoup d'Eau.
 
-attribution: "Written by Vianpyro"
+  Si Claude a réellement découvert un moyen d'arrêter les nanobots, il est possible qu'une trace subsiste encore quelque part dans le programme.
+
+  🇬🇧 The camp counselors recovered a copy of NanoLog from one of Claude's old computers.
+
+  The logs appear to have been erased shortly before the disappearance.
+
+  According to several accounts, Claude used this tool to record observations related to the strange phenomena reported around Lake Not Much Water.
+
+  If a way to stop the nanobots was ever discovered, traces of that discovery may still remain somewhere within the program.
+
+  Format: `DCI{...}`
+
+attribution: "Written by [Vianpyro](https://github.com/Vianpyro)"
 
 type: dynamic
 extra:
   initial: 500
   decay: 100
   minimum: 20
+
+image: ghcr.io/vianpyro/nanolog-ctf:latest
+
+protocol: tcp
+host: null
+connection_info: nc <host> 1337
 
 solution:
   path: solution/README.md
@@ -30,33 +46,23 @@ flags:
       data: "case_sensitive"
     }
 
+# Only visible to admins
 topics:
   - heap
   - tcache
   - use-after-free
   - rust
   - glibc-2.35
-  - container-escape
 
 tags:
-  - heap
-  - tcache
-  - use-after-free
   - rust
-  - glibc-2.35
-  - container-escape
 
 files:
   - src/
 
 hints:
   - content: "Rust garantit la sûreté mémoire *si et seulement si* le compilateur accepte votre code pour les bonnes raisons."
-  - content: "safe-linking (glibc 2.32+) : le pointeur stocké dans tcache n'est pas l'adresse brute. Et `__free_hook` a disparu en 2.34."
-  - content: "Tu es root dans le conteneur mais le flag n'est pas dedans. Qu'est-ce que `cat /proc/1/cmdline` te dit ?"
 
-requirements:
-  - docker
-  - rust
+# next: null
 
-next: null
-version: 1.0.0
+version: "1.1"
