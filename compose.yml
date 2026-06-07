@@ -4,6 +4,8 @@ services:
     restart: unless-stopped
     ports:
       - "1337:1337"
+    environment:
+    - FLAG=DCI{N4n0L0g_Adm1n_Byp4ss_9a6295810c1b}
     # pid: host   # Container escape vulnerability | Waiting on greenlight from infrastructure team
     # read_only: true
     # tmpfs:
