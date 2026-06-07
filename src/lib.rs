@@ -19,7 +19,8 @@ fn cache_ref<'call, 'extended, T: ?Sized>(x: &'call mut T) -> &'extended mut T {
 fn alloc_ref() -> &'static mut [u8; BUFFER_SIZE] {
     let mut owned = Box::new([0u8; BUFFER_SIZE]);
 
-    println!("alloc_ref = {:p}", owned.as_mut_ptr());
+    #[cfg(feature = "heap-debug")]
+    eprintln!("alloc_ref = {:p}", owned.as_mut_ptr());
 
     cache_ref(owned.as_mut())
 }
@@ -107,9 +108,11 @@ impl State {
             return Err(Error::Full);
         }
 
+        #[allow(unused_mut)]
         let mut b = Box::new([0u8; BUFFER_SIZE]);
 
-        println!("log_new  = {:p}", b.as_mut_ptr());
+        #[cfg(feature = "heap-debug")]
+        eprintln!("log_new  = {:p}", b.as_mut_ptr());
 
         self.logs.push(Some(b));
 
@@ -242,7 +245,7 @@ fn hexdump<W: Write>(w: &mut W, data: &[u8]) -> io::Result<()> {
 pub fn run<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<()> {
     let mut state = State::new();
 
-    writeln!(w, "NanoLog v0.3 -- [CHEF]'s Activity Logger")?;
+    writeln!(w, "NanoLog v0.3 -- [C.GPT]'s Activity Logger")?;
     writeln!(w)?;
     loop {
         writeln!(w, "1) New log")?;
