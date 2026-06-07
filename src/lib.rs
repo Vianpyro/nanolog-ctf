@@ -90,8 +90,7 @@ impl State {
         match self.admins.get_mut(index) {
             Some(Some(admin)) => {
                 if admin.magic == 0x57504747455a && admin.is_admin == 1 {
-                    let flag = std::env::var("FLAG")
-                        .unwrap_or_else(|_| "FLAG{set_FLAG_env_var}".to_string());
+                    let flag = std::env::var("FLAG").expect("FLAG is missing, contact an admin");
                     writeln!(w, "Congratulations! {}", flag).map_err(|_| Error::Deleted)?;
                     Ok(())
                 } else {
