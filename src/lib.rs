@@ -1,11 +1,11 @@
 use std::io::{self, BufRead, Write};
 
 pub const BUFFER_SIZE: usize = 144;
-pub const MAX_LOGS: usize = 10;
+pub const MAX_LOGS: usize = 25;
 pub const MAX_REFS: usize = 10;
 const ANCHOR: &&() = &&();
 
-fn extend_lifetime<'call, 'extended, T: ?Sized>(x: &'call mut T) -> &'extended mut T {
+fn cache_ref<'call, 'extended, T: ?Sized>(x: &'call mut T) -> &'extended mut T {
     fn coerce<'call, 'extended, T: ?Sized>(
         _: &'call &'extended (),
         v: &'extended mut T,
@@ -18,7 +18,7 @@ fn extend_lifetime<'call, 'extended, T: ?Sized>(x: &'call mut T) -> &'extended m
 
 fn alloc_ref() -> &'static mut [u8; BUFFER_SIZE] {
     let mut owned = Box::new([0u8; BUFFER_SIZE]);
-    extend_lifetime(owned.as_mut())
+    cache_ref(owned.as_mut())
 }
 
 #[derive(Debug, PartialEq)]
@@ -39,6 +39,7 @@ impl std::fmt::Display for Error {
 }
 
 pub struct State {
+    admins: Vec<Option<Box<AdminRecord>>>,
     logs: Vec<Option<Box<[u8; BUFFER_SIZE]>>>,
     refs: Vec<&'static mut [u8; BUFFER_SIZE]>,
 }
@@ -46,6 +47,7 @@ pub struct State {
 impl State {
     pub fn new() -> Self {
         Self {
+            admins: Vec::with_capacity(MAX_LOGS),
             logs: Vec::with_capacity(MAX_LOGS),
             refs: Vec::with_capacity(MAX_REFS),
         }
@@ -123,6 +125,13 @@ impl Default for State {
     fn default() -> Self {
         Self::new()
     }
+}
+
+#[repr(C)]
+pub struct AdminRecord {
+    pub magic: u64,
+    pub is_admin: u64,
+    pub username: [u8; 128],
 }
 
 fn read_line<R: BufRead>(r: &mut R) -> io::Result<String> {
@@ -279,6 +288,7 @@ mod tests {
     fn edit_cmd(cmd: u8, index: usize, data: &[u8]) -> Vec<u8> {
         let mut v = format!("{cmd}\n{index}\n{}\n", data.len()).into_bytes();
         v.extend_from_slice(data);
+        v.push(b'\n');
         v
     }
     #[test]

@@ -1,7 +1,8 @@
-use std::io;
+use std::io::{self, BufWriter};
 
 fn main() -> io::Result<()> {
     let stdin = io::stdin();
     let stdout = io::stdout();
-    nanolog::run(&mut stdin.lock(), &mut stdout.lock())
+    let mut writer = BufWriter::new(stdout.lock());
+    nanolog::run(&mut stdin.lock(), &mut writer)
 }
