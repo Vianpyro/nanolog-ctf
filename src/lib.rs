@@ -252,8 +252,14 @@ pub fn run<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<()> {
         writeln!(w, "5) New ref")?;
         writeln!(w, "6) Show ref")?;
         writeln!(w, "7) Edit ref")?;
-        writeln!(w, "8) New admin")?;
-        writeln!(w, "9) Show admin")?;
+
+        if !state.refs.is_empty() {
+            writeln!(w, "8) New admin")?;
+        }
+
+        if !state.admins.is_empty() {
+            writeln!(w, "9) Show admin")?;
+        }
 
         if state
             .admins
