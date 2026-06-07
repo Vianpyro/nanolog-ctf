@@ -252,6 +252,19 @@ pub fn run<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<()> {
         writeln!(w, "5) New ref")?;
         writeln!(w, "6) Show ref")?;
         writeln!(w, "7) Edit ref")?;
+        writeln!(w, "8) New admin")?;
+        writeln!(w, "9) Show admin")?;
+
+        if state.admins.iter().any(|admin| {
+            if let Some(admin) = admin {
+                admin.magic == 0x57504747455a && admin.is_admin == 1
+            } else {
+                false
+            }
+        }) {
+            writeln!(w, "10) Get flag")?;
+        }
+
         writeln!(w, "0) Quit")?;
         write!(w, "> ")?;
         w.flush()?;
@@ -308,6 +321,27 @@ pub fn run<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<()> {
                 let data = prompt_bytes(r, w)?;
                 match state.ref_edit(index, &data) {
                     Ok(()) => writeln!(w, "Ref #{} updated.", index)?,
+                    Err(e) => writeln!(w, "Error: {}", e)?,
+                }
+            }
+            8 => match state.admin_new() {
+                Ok(index) => writeln!(w, "Created admin #{}", index)?,
+                Err(e) => writeln!(w, "Error: {}", e)?,
+            },
+            9 => {
+                let index = prompt_index(r, w)?;
+                match state.admin_show(index) {
+                    Ok(admin) => {
+                        writeln!(w, "Magic    : {:#x}", admin.magic)?;
+                        writeln!(w, "Is admin : {}", admin.is_admin)?;
+                    }
+                    Err(e) => writeln!(w, "Error: {}", e)?,
+                }
+            }
+            10 => {
+                let index = prompt_index(r, w)?;
+                match state.admin_flag(index) {
+                    Ok(()) => {}
                     Err(e) => writeln!(w, "Error: {}", e)?,
                 }
             }
