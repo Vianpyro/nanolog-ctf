@@ -27,9 +27,8 @@ fn alloc_ref() -> &'static mut [u8; BUFFER_SIZE] {
 
 #[repr(C)]
 pub struct AdminRecord {
-    magic: u64,
     is_admin: u64,
-    username: [u8; BUFFER_SIZE - 16],
+    username: [u8; BUFFER_SIZE - 8],
 }
 
 #[derive(Debug, PartialEq)]
@@ -70,9 +69,8 @@ impl State {
         }
 
         self.admins.push(Some(Box::new(AdminRecord {
-            magic: 0x57504747455a,
             is_admin: 0,
-            username: [0u8; BUFFER_SIZE - 16],
+            username: [0u8; BUFFER_SIZE - 8],
         })));
 
         Ok(self.admins.len() - 1)
@@ -89,8 +87,8 @@ impl State {
     pub fn admin_flag<W: Write>(&mut self, index: usize, w: &mut W) -> Result<(), Error> {
         match self.admins.get_mut(index) {
             Some(Some(admin)) => {
-                if admin.magic == 0x57504747455a && admin.is_admin == 1 {
-                    let flag = std::env::var("FLAG").expect("FLAG is missing, contact an admin");
+                if admin.is_admin == 1 {
+                    let flag = std::env::var("FLAG").expect("FLAG not set");
                     writeln!(w, "Congratulations! {}", flag).map_err(|_| Error::Deleted)?;
                     Ok(())
                 } else {
@@ -257,13 +255,11 @@ pub fn run<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<()> {
         writeln!(w, "8) New admin")?;
         writeln!(w, "9) Show admin")?;
 
-        if state.admins.iter().any(|admin| {
-            if let Some(admin) = admin {
-                admin.magic == 0x57504747455a && admin.is_admin == 1
-            } else {
-                false
-            }
-        }) {
+        if state
+            .admins
+            .iter()
+            .any(|admin| matches!(admin, Some(a) if a.is_admin == 1))
+        {
             writeln!(w, "10) Get flag")?;
         }
 
@@ -334,7 +330,6 @@ pub fn run<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<()> {
                 let index = prompt_index(r, w)?;
                 match state.admin_show(index) {
                     Ok(admin) => {
-                        writeln!(w, "Magic    : {:#x}", admin.magic)?;
                         writeln!(w, "Is admin : {}", admin.is_admin)?;
                     }
                     Err(e) => writeln!(w, "Error: {}", e)?,
