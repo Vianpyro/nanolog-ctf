@@ -5,11 +5,6 @@ pub const MAX_LOGS: usize = 25;
 pub const MAX_REFS: usize = 10;
 const ANCHOR: &&() = &&();
 
-const FLAG: &str = env!(
-    "FLAG",
-    "FLAG environment variable not set -- refusing to start"
-);
-
 fn cache_ref<'call, 'extended, T: ?Sized>(x: &'call mut T) -> &'extended mut T {
     fn coerce<'call, 'extended, T: ?Sized>(
         _: &'call &'extended (),
