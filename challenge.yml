@@ -26,7 +26,7 @@ solution:
 flags:
   - {
       type: "static",
-      content: "DCI{N4n0L0g_S0undne55_H0le_a2e93df94ff2}",
+      content: "DCI{N4n0L0g_Adm1n_Byp4ss_9a6295810c1b}",
       data: "case_sensitive"
     }
 
