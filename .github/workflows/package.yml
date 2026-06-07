@@ -48,9 +48,13 @@ jobs:
           body: |
             Docker image:
 
+            ```
             docker pull ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+            ```
 
             Run:
 
+            ```
             docker run --rm -p 1337:1337 \
               ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+            ```
