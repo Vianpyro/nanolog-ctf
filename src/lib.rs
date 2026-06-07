@@ -25,7 +25,7 @@ fn alloc_ref() -> &'static mut [u8; BUFFER_SIZE] {
 }
 
 #[repr(C)]
-struct AdminRecord {
+pub struct AdminRecord {
     magic: u64,
     is_admin: u64,
     username: [u8; BUFFER_SIZE - 16],
@@ -340,7 +340,7 @@ pub fn run<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<()> {
             }
             10 => {
                 let index = prompt_index(r, w)?;
-                match state.admin_flag(index) {
+                match state.admin_flag(index, w) {
                     Ok(()) => {}
                     Err(e) => writeln!(w, "Error: {}", e)?,
                 }
