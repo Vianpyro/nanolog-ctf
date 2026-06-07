@@ -18,7 +18,17 @@ fn cache_ref<'call, 'extended, T: ?Sized>(x: &'call mut T) -> &'extended mut T {
 
 fn alloc_ref() -> &'static mut [u8; BUFFER_SIZE] {
     let mut owned = Box::new([0u8; BUFFER_SIZE]);
+
+    println!("alloc_ref = {:p}", owned.as_mut_ptr());
+
     cache_ref(owned.as_mut())
+}
+
+#[repr(C)]
+struct AdminRecord {
+    magic: u64,
+    is_admin: u64,
+    username: [u8; BUFFER_SIZE - 16],
 }
 
 #[derive(Debug, PartialEq)]
@@ -53,12 +63,55 @@ impl State {
         }
     }
 
+    pub fn admin_new(&mut self) -> Result<usize, Error> {
+        if self.admins.len() >= MAX_LOGS {
+            return Err(Error::Full);
+        }
+
+        self.admins.push(Some(Box::new(AdminRecord {
+            magic: 0x57504747455a,
+            is_admin: 0,
+            username: [0u8; BUFFER_SIZE - 16],
+        })));
+
+        Ok(self.admins.len() - 1)
+    }
+
+    pub fn admin_show(&self, index: usize) -> Result<&AdminRecord, Error> {
+        match self.admins.get(index) {
+            Some(Some(admin)) => Ok(admin),
+            Some(None) => Err(Error::Deleted),
+            None => Err(Error::OutOfRange),
+        }
+    }
+
+    // admin_new() vérifie : magic == MAGIC && is_admin == 1
+    pub fn admin_flag(&mut self, index: usize) -> Result<(), Error> {
+        match self.admins.get_mut(index) {
+            Some(Some(admin)) => {
+                if admin.magic == 0x57504747455a && admin.is_admin == 1 {
+                    println!("Congratulations! Here is your flag:");
+                    println!("FLAG-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
+                    Ok(())
+                } else {
+                    Err(Error::Deleted) // Treat as deleted to avoid info leak
+                }
+            }
+            Some(None) => Err(Error::Deleted),
+            None => Err(Error::OutOfRange),
+        }
+    }
+
     pub fn log_new(&mut self) -> Result<usize, Error> {
         if self.logs.len() >= MAX_LOGS {
             return Err(Error::Full);
         }
 
-        self.logs.push(Some(Box::new([0u8; BUFFER_SIZE])));
+        let mut b = Box::new([0u8; BUFFER_SIZE]);
+
+        println!("log_new  = {:p}", b.as_mut_ptr());
+
+        self.logs.push(Some(b));
 
         Ok(self.logs.len() - 1)
     }
@@ -125,13 +178,6 @@ impl Default for State {
     fn default() -> Self {
         Self::new()
     }
-}
-
-#[repr(C)]
-pub struct AdminRecord {
-    pub magic: u64,
-    pub is_admin: u64,
-    pub username: [u8; 128],
 }
 
 fn read_line<R: BufRead>(r: &mut R) -> io::Result<String> {
