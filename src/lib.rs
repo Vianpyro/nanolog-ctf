@@ -5,6 +5,11 @@ pub const MAX_LOGS: usize = 25;
 pub const MAX_REFS: usize = 10;
 const ANCHOR: &&() = &&();
 
+const FLAG: &str = env!(
+    "FLAG",
+    "FLAG environment variable not set -- refusing to start"
+);
+
 fn cache_ref<'call, 'extended, T: ?Sized>(x: &'call mut T) -> &'extended mut T {
     fn coerce<'call, 'extended, T: ?Sized>(
         _: &'call &'extended (),
@@ -85,16 +90,16 @@ impl State {
         }
     }
 
-    // admin_new() vérifie : magic == MAGIC && is_admin == 1
-    pub fn admin_flag(&mut self, index: usize) -> Result<(), Error> {
+    pub fn admin_flag<W: Write>(&mut self, index: usize, w: &mut W) -> Result<(), Error> {
         match self.admins.get_mut(index) {
             Some(Some(admin)) => {
                 if admin.magic == 0x57504747455a && admin.is_admin == 1 {
-                    println!("Congratulations! Here is your flag:");
-                    println!("FLAG-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
+                    let flag = std::env::var("FLAG")
+                        .unwrap_or_else(|_| "FLAG{set_FLAG_env_var}".to_string());
+                    writeln!(w, "Congratulations! {}", flag).map_err(|_| Error::Deleted)?;
                     Ok(())
                 } else {
-                    Err(Error::Deleted) // Treat as deleted to avoid info leak
+                    Err(Error::Deleted)
                 }
             }
             Some(None) => Err(Error::Deleted),
