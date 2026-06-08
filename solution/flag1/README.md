@@ -1,4 +1,4 @@
-# Unsound Memories
+# Unsound Memories -- Flag 2
 
 ## Write-up (FR)
 
@@ -15,7 +15,7 @@ pub fn admin_flag<W: Write>(&mut self, index: usize, w: &mut W) -> Result<(), Er
     match self.admins.get_mut(index) {
         Some(Some(admin)) => {
             if admin.is_admin == 1 {
-                let flag = std::env::var("FLAG").expect("FLAG not set");
+                let flag = std::env::var("FLAG1").expect("FLAG1 not set");
                 writeln!(w, "Congratulations! {}", flag)?;
                 Ok(())
             } else {

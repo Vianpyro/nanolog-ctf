@@ -49,20 +49,19 @@ flags:
 # Only visible to admins
 topics:
   - heap
-  - tcache
   - use-after-free
   - rust
-  - glibc-2.35
 
 tags:
   - rust
 
 files:
-  - src/
+  - nanolog-flag2.3.tar.gz
 
 hints:
   - content: "Rust garantit la sûreté mémoire *si et seulement si* le compilateur accepte votre code pour les bonnes raisons."
 
-# next: null
+next:
+  name: Deeper Memories
 
-version: "1.1"
+version: "2.3"

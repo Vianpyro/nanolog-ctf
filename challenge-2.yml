@@ -1,0 +1,76 @@
+name: Deeper Memories
+author: Vianpyro
+category: PWN
+
+description: |
+  🇫🇷 Les journaux de Claude étaient chiffrés, mais les nanobots ont laissé des traces bien plus profondes dans la mémoire du programme.
+
+  Pour aller plus loin, il faudra comprendre comment fonctionne l'allocateur mémoire du système, et trouver un moyen de détourner le flot d'exécution.
+
+  Le code source et le binaire sont fournis.
+
+  🇬🇧 Claude's logs were encrypted, but the nanobots left far deeper traces inside the program's memory.
+
+  Going further requires understanding how the system memory allocator works, and finding a way to hijack the execution flow.
+
+  Source code and binary are provided.
+
+  Format: `DCI{...}`
+
+attribution: "Written by [Vianpyro](https://github.com/Vianpyro)"
+
+type: dynamic
+extra:
+  initial: 500
+  decay: 100
+  minimum: 20
+
+image: ghcr.io/vianpyro/nanolog-ctf:latest
+
+protocol: tcp
+host: null
+connection_info: nc <host> 1337
+
+solution:
+  path: solution/README.md
+  state: hidden
+
+flags:
+  - {
+      type: "static",
+      content: "DCI{N4n0L0g_L1bc_L34k_DC4svjxQ}",
+      data: "case_sensitive"
+    }
+
+# Only visible to admins
+topics:
+  - heap
+  - tcache
+  - unsorted-bin
+  - libc-leak
+  - use-after-free
+  - callback-hijack
+  - rust
+  - glibc-2.35
+
+tags:
+  - rust
+
+files:
+  - nanolog-flag2.3.tar.gz
+
+hints:
+  - content: |
+      🇫🇷 Il existe une commande qui n'est accessible qu'une fois admin. Que se passe-t-il si le tcache est plein au moment où tu l'utilises ?
+      🇬🇧 There is a command that only becomes available once you are admin. What happens if the tcache is full when you use it?
+  - content: |
+      🇫🇷 Le chunk libéré contient maintenant un pointeur. Ce pointeur appartient à une bibliothèque que tu connais. Comment calculer son adresse de base depuis ce pointeur ?
+      🇬🇧 The freed chunk now contains a pointer. That pointer belongs to a library you know. How do you compute its base address from that pointer?
+  - content: |
+      🇫🇷 Tu as la base de libc. Tu connais l'offset de `system()`. Il te reste à placer `/bin/sh` au bon endroit et à déclencher le callback.
+      🇬🇧 You have libc base. You know the offset of `system()`. All that remains is placing `/bin/sh` in the right location and triggering the callback.
+
+requirements:
+  - Unsound Memories
+
+version: "2.3"
