@@ -26,7 +26,7 @@ fn alloc_ref() -> &'static mut [u8; BUFFER_SIZE] {
 #[repr(C)]
 pub struct AdminRecord {
     is_admin: u64,
-    callback: Option<fn()>,
+    callback: Option<fn(*const u8)>,
     username: [u8; BUFFER_SIZE - (8 + 8)],
 }
 
@@ -80,7 +80,7 @@ impl State {
                 writeln!(w, "Is admin : {}", admin.is_admin).map_err(|_| Error::Deleted)?;
 
                 if let Some(cb) = admin.callback {
-                    cb();
+                    cb(&**admin as *const AdminRecord as *const u8);
                 }
                 Ok(())
             }
@@ -104,7 +104,7 @@ impl State {
         match self.admins.get_mut(index) {
             Some(Some(admin)) => {
                 if admin.is_admin == 1 {
-                    let flag = std::env::var("FLAG").expect("FLAG not set — refusing to continue");
+                    let flag = std::env::var("FLAG1").expect("FLAG1 not set -- Contact organizers");
                     writeln!(w, "Congratulations! {}", flag).map_err(|_| Error::Deleted)?;
                     Ok(())
                 } else {

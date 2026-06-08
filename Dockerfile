@@ -34,6 +34,4 @@ USER ctf
 WORKDIR /challenge
 EXPOSE 1337
 
-CMD ["socat",
-     "TCP-LISTEN:1337,reuseaddr,fork,nodelay",
-     "EXEC:/challenge/nanolog,nofork"]
+CMD ["socat", "TCP-LISTEN:1337,reuseaddr,fork,nodelay", "EXEC:/challenge/nanolog,nofork"]
