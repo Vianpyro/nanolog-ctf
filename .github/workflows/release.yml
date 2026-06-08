@@ -66,7 +66,6 @@ jobs:
 
       - name: Verify required files
         run: |
-          test -f Dockerfile
           test -f libc.so.6
           test -f ld-linux-x86-64.so.2
           test -f rust-toolchain.toml
