@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-    - 'flag*'
+      - 'flag*'
 
 permissions:
   contents: write
@@ -40,6 +40,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            FLAG2=${{ secrets.FLAG2 }}
 
   release-assets:
     runs-on: ubuntu-22.04
@@ -64,8 +66,14 @@ jobs:
         run: |
           cargo build --release
 
+      - name: Extract libc from Ubuntu 22.04
+        run: |
+          docker run --rm -v "$PWD:/out" ubuntu:22.04 \
+            sh -c "cp /lib/x86_64-linux-gnu/libc.so.6 /out/ && cp /lib64/ld-linux-x86-64.so.2 /out/"
+
       - name: Verify required files
         run: |
+          test -f Dockerfile
           test -f libc.so.6
           test -f ld-linux-x86-64.so.2
           test -f rust-toolchain.toml
@@ -82,6 +90,7 @@ jobs:
           chmod +x ld-linux-x86-64.so.2
 
           timeout 3 \
+            env FLAG1=test \
             ./ld-linux-x86-64.so.2 \
             --library-path . \
             ./target/release/nanolog \
