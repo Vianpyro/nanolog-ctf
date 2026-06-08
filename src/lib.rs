@@ -273,7 +273,7 @@ pub fn run<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<()> {
         if state
             .admins
             .iter()
-            .any(|a| matches!(a, Some(a) if a.is_admin == 1))
+            .any(|admin| matches!(admin, Some(a) if a.is_admin == 1))
         {
             writeln!(w, "11) Get flag")?;
         }
@@ -293,7 +293,7 @@ pub fn run<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<()> {
                 break;
             }
             1 => match state.log_new() {
-                Ok(i) => writeln!(w, "Created log #{}", i)?,
+                Ok(index) => writeln!(w, "Created log #{}", index)?,
                 Err(e) => writeln!(w, "Error: {}", e)?,
             },
             2 => {
@@ -319,7 +319,7 @@ pub fn run<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<()> {
                 }
             }
             5 => match state.ref_new() {
-                Ok(i) => writeln!(w, "Created ref #{}", i)?,
+                Ok(index) => writeln!(w, "Created ref #{}", index)?,
                 Err(e) => writeln!(w, "Error: {}", e)?,
             },
             6 => {
@@ -338,7 +338,7 @@ pub fn run<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<()> {
                 }
             }
             8 => match state.admin_new() {
-                Ok(i) => writeln!(w, "Created admin #{}", i)?,
+                Ok(index) => writeln!(w, "Created admin #{}", index)?,
                 Err(e) => writeln!(w, "Error: {}", e)?,
             },
             9 => {
@@ -415,9 +415,9 @@ mod tests {
         state.log_new().unwrap();
         state.log_edit(0, &[0xffu8; BUFFER_SIZE]).unwrap();
         state.log_edit(0, b"Hi").unwrap();
-        let buf = state.log_show(0).unwrap();
-        assert_eq!(&buf[..2], b"Hi");
-        assert!(buf[2..].iter().all(|&b| b == 0));
+        let buffer = state.log_show(0).unwrap();
+        assert_eq!(&buffer[..2], b"Hi");
+        assert!(buffer[2..].iter().all(|&b| b == 0));
     }
 
     #[test]
