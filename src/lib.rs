@@ -18,10 +18,8 @@ fn cache_ref<'call, 'extended, T: ?Sized>(x: &'call mut T) -> &'extended mut T {
 
 fn alloc_ref() -> &'static mut [u8; BUFFER_SIZE] {
     let mut owned = Box::new([0u8; BUFFER_SIZE]);
-
     #[cfg(feature = "heap-debug")]
     eprintln!("alloc_ref = {:p}", owned.as_mut_ptr());
-
     cache_ref(owned.as_mut())
 }
 
@@ -68,13 +66,11 @@ impl State {
         if self.admins.len() >= MAX_LOGS {
             return Err(Error::Full);
         }
-
         self.admins.push(Some(Box::new(AdminRecord {
             is_admin: 0,
             callback: None,
-            username: [0u8; BUFFER_SIZE - (8 + 8)],
+            username: [0u8; BUFFER_SIZE - 16],
         })));
-
         Ok(self.admins.len() - 1)
     }
 
@@ -82,6 +78,7 @@ impl State {
         match self.admins.get(index) {
             Some(Some(admin)) => {
                 writeln!(w, "Is admin : {}", admin.is_admin).map_err(|_| Error::Deleted)?;
+
                 if let Some(cb) = admin.callback {
                     cb();
                 }
@@ -92,11 +89,22 @@ impl State {
         }
     }
 
+    pub fn admin_drop(&mut self, index: usize) -> Result<(), Error> {
+        match self.admins.get(index) {
+            Some(Some(admin)) if admin.is_admin == 1 => {}
+            Some(Some(_)) => return Err(Error::Deleted),
+            Some(None) => return Err(Error::Deleted),
+            None => return Err(Error::OutOfRange),
+        }
+        *self.admins.get_mut(index).unwrap() = None;
+        Ok(())
+    }
+
     pub fn admin_flag<W: Write>(&mut self, index: usize, w: &mut W) -> Result<(), Error> {
         match self.admins.get_mut(index) {
             Some(Some(admin)) => {
                 if admin.is_admin == 1 {
-                    let flag = std::env::var("FLAG").expect("FLAG not set");
+                    let flag = std::env::var("FLAG").expect("FLAG not set — refusing to continue");
                     writeln!(w, "Congratulations! {}", flag).map_err(|_| Error::Deleted)?;
                     Ok(())
                 } else {
@@ -108,32 +116,15 @@ impl State {
         }
     }
 
-    pub fn admin_drop(&mut self, index: usize) -> Result<(), Error> {
-        match self.admins.get_mut(index) {
-            Some(Some(admin)) if admin.is_admin == 1 => {
-                let slot = self.admins.get_mut(index).unwrap();
-                *slot = None;
-                Ok(())
-            }
-            Some(Some(_)) => Err(Error::Deleted),
-            Some(None) => Err(Error::Deleted),
-            None => Err(Error::OutOfRange),
-        }
-    }
-
     pub fn log_new(&mut self) -> Result<usize, Error> {
         if self.logs.len() >= MAX_LOGS {
             return Err(Error::Full);
         }
-
         #[allow(unused_mut)]
         let mut b = Box::new([0u8; BUFFER_SIZE]);
-
         #[cfg(feature = "heap-debug")]
         eprintln!("log_new  = {:p}", b.as_mut_ptr());
-
         self.logs.push(Some(b));
-
         Ok(self.logs.len() - 1)
     }
 
@@ -173,7 +164,6 @@ impl State {
         if self.refs.len() >= MAX_REFS {
             return Err(Error::Full);
         }
-
         self.refs.push(alloc_ref());
         Ok(self.refs.len() - 1)
     }
@@ -228,24 +218,20 @@ fn prompt_bytes<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<Vec<u8
 fn hexdump<W: Write>(w: &mut W, data: &[u8]) -> io::Result<()> {
     for (row_index, row) in data.chunks(16).enumerate() {
         write!(w, "{:04x}: ", row_index * 16)?;
-
-        for (index, byte) in row.iter().enumerate() {
-            if index == 8 {
-                write!(w, " ")?; // Extra space in the middle
+        for (i, byte) in row.iter().enumerate() {
+            if i == 8 {
+                write!(w, " ")?;
             }
             write!(w, "{:02x} ", byte)?;
         }
-
         let padding = 16 - row.len();
         for i in 0..padding {
             if row.len() + i == 8 {
-                write!(w, " ")?; // Extra space in the middle
+                write!(w, " ")?;
             }
-            write!(w, "   ")?; // 3 spaces for each missing byte
+            write!(w, "   ")?;
         }
-
         write!(w, " |")?;
-
         for &byte in row {
             let c = if byte.is_ascii_graphic() || byte == b' ' {
                 byte as char
@@ -254,7 +240,6 @@ fn hexdump<W: Write>(w: &mut W, data: &[u8]) -> io::Result<()> {
             };
             write!(w, "{}", c)?;
         }
-
         writeln!(w, "|")?;
     }
     Ok(())
@@ -263,8 +248,9 @@ fn hexdump<W: Write>(w: &mut W, data: &[u8]) -> io::Result<()> {
 pub fn run<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<()> {
     let mut state = State::new();
 
-    writeln!(w, "[Claude G.P.T.]'s Activity Logger")?;
+    writeln!(w, "NanoLog v0.3 -- [C.GPT]'s Activity Logger")?;
     writeln!(w)?;
+
     loop {
         writeln!(w, "1) New log")?;
         writeln!(w, "2) Show log")?;
@@ -286,7 +272,7 @@ pub fn run<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<()> {
         if state
             .admins
             .iter()
-            .any(|admin| matches!(admin, Some(a) if a.is_admin == 1))
+            .any(|a| matches!(a, Some(a) if a.is_admin == 1))
         {
             writeln!(w, "11) Get flag")?;
         }
@@ -306,7 +292,7 @@ pub fn run<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<()> {
                 break;
             }
             1 => match state.log_new() {
-                Ok(index) => writeln!(w, "Created log #{}", index)?,
+                Ok(i) => writeln!(w, "Created log #{}", i)?,
                 Err(e) => writeln!(w, "Error: {}", e)?,
             },
             2 => {
@@ -332,7 +318,7 @@ pub fn run<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<()> {
                 }
             }
             5 => match state.ref_new() {
-                Ok(index) => writeln!(w, "Created ref #{}", index)?,
+                Ok(i) => writeln!(w, "Created ref #{}", i)?,
                 Err(e) => writeln!(w, "Error: {}", e)?,
             },
             6 => {
@@ -351,7 +337,7 @@ pub fn run<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<()> {
                 }
             }
             8 => match state.admin_new() {
-                Ok(index) => writeln!(w, "Created admin #{}", index)?,
+                Ok(i) => writeln!(w, "Created admin #{}", i)?,
                 Err(e) => writeln!(w, "Error: {}", e)?,
             },
             9 => {
@@ -386,7 +372,6 @@ mod tests {
     use super::*;
     use std::io::Cursor;
 
-    #[allow(dead_code)]
     fn session(input: &[u8]) -> String {
         let mut r = Cursor::new(input.to_vec());
         let mut w = Vec::new();
@@ -394,13 +379,13 @@ mod tests {
         String::from_utf8_lossy(&w).into_owned()
     }
 
-    #[allow(dead_code)]
     fn edit_cmd(cmd: u8, index: usize, data: &[u8]) -> Vec<u8> {
         let mut v = format!("{cmd}\n{index}\n{}\n", data.len()).into_bytes();
         v.extend_from_slice(data);
         v.push(b'\n');
         v
     }
+
     #[test]
     fn state_log_new_sequential_indices() {
         let mut state = State::new();
@@ -429,9 +414,9 @@ mod tests {
         state.log_new().unwrap();
         state.log_edit(0, &[0xffu8; BUFFER_SIZE]).unwrap();
         state.log_edit(0, b"Hi").unwrap();
-        let buffer = state.log_show(0).unwrap();
-        assert_eq!(&buffer[..2], b"Hi");
-        assert!(buffer[2..].iter().all(|&b| b == 0));
+        let buf = state.log_show(0).unwrap();
+        assert_eq!(&buf[..2], b"Hi");
+        assert!(buf[2..].iter().all(|&b| b == 0));
     }
 
     #[test]
@@ -476,20 +461,6 @@ mod tests {
     }
 
     #[test]
-    fn state_oob_read_errors() {
-        let state = State::new();
-        assert_eq!(state.log_show(0), Err(Error::OutOfRange));
-        assert_eq!(state.ref_show(0), Err(Error::OutOfRange));
-    }
-
-    #[test]
-    fn state_oob_edit_errors() {
-        let mut state = State::new();
-        assert_eq!(state.log_edit(0, b"X"), Err(Error::OutOfRange));
-        assert_eq!(state.ref_edit(0, b"X"), Err(Error::OutOfRange));
-    }
-
-    #[test]
     fn state_ref_new_sequential_indices() {
         let mut state = State::new();
         assert_eq!(state.ref_new(), Ok(0));
@@ -512,6 +483,53 @@ mod tests {
             state.ref_new().unwrap();
         }
         assert_eq!(state.ref_new(), Err(Error::Full));
+    }
+
+    #[test]
+    fn state_oob_read_errors() {
+        let state = State::new();
+        assert_eq!(state.log_show(0), Err(Error::OutOfRange));
+        assert_eq!(state.ref_show(0), Err(Error::OutOfRange));
+    }
+
+    #[test]
+    fn state_oob_edit_errors() {
+        let mut state = State::new();
+        assert_eq!(state.log_edit(0, b"X"), Err(Error::OutOfRange));
+        assert_eq!(state.ref_edit(0, b"X"), Err(Error::OutOfRange));
+    }
+
+    #[test]
+    fn state_admin_new_sequential_indices() {
+        let mut state = State::new();
+        state.ref_new().unwrap();
+        assert_eq!(state.admin_new(), Ok(0));
+        assert_eq!(state.admin_new(), Ok(1));
+    }
+
+    #[test]
+    fn state_admin_default_not_admin() {
+        let mut state = State::new();
+        state.ref_new().unwrap();
+        state.admin_new().unwrap();
+        let mut w = Vec::new();
+        state.admin_show(0, &mut w).unwrap();
+        assert!(String::from_utf8_lossy(&w).contains("Is admin : 0"));
+    }
+
+    #[test]
+    fn state_admin_drop_requires_is_admin() {
+        let mut state = State::new();
+        state.ref_new().unwrap();
+        state.admin_new().unwrap();
+
+        assert_eq!(state.admin_drop(0), Err(Error::Deleted));
+    }
+
+    #[test]
+    fn state_admin_drop_oob() {
+        let mut state = State::new();
+        assert_eq!(state.admin_drop(0), Err(Error::OutOfRange));
     }
 
     #[test]
@@ -546,6 +564,23 @@ mod tests {
     }
 
     #[test]
+    fn uaf_ref_write_aliases_admin() {
+        let mut state = State::new();
+
+        state.ref_new().unwrap();
+
+        state.admin_new().unwrap();
+
+        let mut payload = [0u8; BUFFER_SIZE];
+        payload[..8].copy_from_slice(&1u64.to_le_bytes());
+        state.ref_edit(0, &payload).unwrap();
+
+        let mut w = Vec::new();
+        state.admin_show(0, &mut w).unwrap();
+        assert!(String::from_utf8_lossy(&w).contains("Is admin : 1"));
+    }
+
+    #[test]
     fn protocol_new_log_prints_index() {
         let out = session(b"1\n0\n");
         assert!(out.contains("Created log #0"));
@@ -576,6 +611,15 @@ mod tests {
     fn protocol_new_ref_prints_index() {
         let out = session(b"5\n0\n");
         assert!(out.contains("Created ref #0"));
+    }
+
+    #[test]
+    fn protocol_admin_gated_on_refs() {
+        let out = session(b"0\n");
+        assert!(!out.contains("8) New admin"));
+
+        let out2 = session(b"5\n0\n");
+        assert!(out2.contains("8) New admin"));
     }
 
     #[test]
