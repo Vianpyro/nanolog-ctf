@@ -1,14 +1,17 @@
 services:
   nanolog:
-    build: .
+    build:
+      context: .
+      args:
+        FLAG2: "DCI{N4n0L0g_L1bc_L34k_DC4svjxQ}"
     restart: unless-stopped
     ports:
       - "1337:1337"
     environment:
-    - FLAG=DCI{N4n0L0g_Adm1n_Byp4ss_9a6295810c1b}
+      - FLAG1=DCI{N4n0L0g_Adm1n_Byp4ss_b14b12bbcc2b}
     # pid: host   # Container escape vulnerability | Waiting on greenlight from infrastructure team
     read_only: true
     tmpfs:
-     - /tmp
+      - /tmp
     cap_drop:
-     - ALL
+      - ALL

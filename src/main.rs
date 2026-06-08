@@ -15,7 +15,8 @@ const WELCOME_MESSAGE: &str = "\
 ";
 
 fn main() -> io::Result<()> {
-    std::env::var("FLAG").expect("FLAG environment variable not set -- refusing to start");
+    std::env::var("FLAG1").expect("FLAG1 environment variable not set -- refusing to start");
+    std::fs::read_to_string("/flag").expect("/flag file not found or empty -- refusing to start");
 
     println!("{WELCOME_MESSAGE}");
 
