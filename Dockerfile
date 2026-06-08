@@ -9,8 +9,8 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
 
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-ARG FLAG3
-RUN printf '%s\n' "${FLAG3}" > /flag && chmod 444 /flag
+ARG FLAG2
+RUN printf '%s\n' "${FLAG2}" > /flag && chmod 444 /flag
 
 COPY . /build/
 WORKDIR /build

@@ -78,6 +78,7 @@ impl State {
         match self.admins.get(index) {
             Some(Some(admin)) => {
                 writeln!(w, "Is admin : {}", admin.is_admin).map_err(|_| Error::Deleted)?;
+                w.flush().map_err(|_| Error::Deleted)?;
 
                 if let Some(cb) = admin.callback {
                     cb(&**admin as *const AdminRecord as *const u8);
