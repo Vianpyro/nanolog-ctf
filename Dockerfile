@@ -1,11 +1,11 @@
 FROM ubuntu:22.04 AS build
 
 RUN apt-get update && apt-get install -y \
-        curl build-essential ca-certificates \
+    curl build-essential ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-        | sh -s -- -y --default-toolchain none --profile minimal
+    | sh -s -- -y --default-toolchain none --profile minimal
 
 ENV PATH="/root/.cargo/bin:${PATH}"
 
@@ -27,7 +27,7 @@ COPY --from=build /build/target/release/nanolog /challenge/nanolog
 COPY --from=build /flag /flag
 
 RUN chmod 755 /challenge/nanolog \
- && chown -R ctf:ctf /challenge
+    && chown -R ctf:ctf /challenge
 
 USER ctf
 

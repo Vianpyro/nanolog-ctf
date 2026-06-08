@@ -41,20 +41,87 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+  release-assets:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+            | sh -s -- -y --default-toolchain none --profile minimal
+
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Verify Rust version
+        run: |
+          rustc --version
+          rustc --version | grep "1.79.0"
+
+      - name: Build challenge
+        run: |
+          cargo build --release
+
+      - name: Verify required files
+        run: |
+          test -f Dockerfile
+          test -f libc.so.6
+          test -f ld-linux-x86-64.so.2
+          test -f rust-toolchain.toml
+          test -f src/lib.rs
+          test -f src/main.rs
+
+      - name: Verify binary
+        run: |
+          file target/release/nanolog
+
+      - name: Verify challenge starts with bundled libc
+        run: |
+          chmod +x target/release/nanolog
+          chmod +x ld-linux-x86-64.so.2
+
+          timeout 3 \
+            ./ld-linux-x86-64.so.2 \
+            --library-path . \
+            ./target/release/nanolog \
+            || true
+
+      - name: Create distribution archive
+        run: |
+          mkdir -p dist/src
+
+          cp Dockerfile dist/
+          cp rust-toolchain.toml dist/
+
+          cp libc.so.6 dist/
+          cp ld-linux-x86-64.so.2 dist/
+
+          cp target/release/nanolog dist/
+
+          cp src/lib.rs dist/src/
+          cp src/main.rs dist/src/
+
+          tar -czf nanolog-${{ github.ref_name }}.tar.gz -C dist .
+
       - name: Create release
         uses: softprops/action-gh-release@v3
         with:
           generate_release_notes: true
           body: |
-            ## Docker image:
+            ## Docker image
 
             ```
             docker pull ghcr.io/${{ github.repository }}:${{ github.ref_name }}
             ```
 
-            ## Run:
+            ## Run
 
             ```
             docker run --rm -p 1337:1337 \
               ghcr.io/${{ github.repository }}:${{ github.ref_name }}
             ```
+
+          files: |
+            nanolog-${{ github.ref_name }}.tar.gz
