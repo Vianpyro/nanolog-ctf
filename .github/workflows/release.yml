@@ -66,10 +66,10 @@ jobs:
         run: |
           cargo build --release
 
-      - name: Extract libc from Ubuntu 22.04
+      - name: Extract libc from runner
         run: |
-          docker run --rm -v "$PWD:/out" ubuntu:22.04 \
-            sh -c "cp /lib/x86_64-linux-gnu/libc.so.6 /out/ && cp /lib64/ld-linux-x86-64.so.2 /out/"
+          cp /lib/x86_64-linux-gnu/libc.so.6 .
+          cp /lib64/ld-linux-x86-64.so.2 .
 
       - name: Verify required files
         run: |
