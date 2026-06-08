@@ -3,8 +3,19 @@ name: Rust
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - "**/.github/workflows/release.yml"
+      - "**/*.rs"
+      - "**/Cargo.toml"
+      - "**/Cargo.lock"
   pull_request:
     branches: [ "main" ]
+    paths:
+      - "**/.github/workflows/release.yml"
+      - "**/*.rs"
+      - "**/Cargo.toml"
+      - "**/Cargo.lock"
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always

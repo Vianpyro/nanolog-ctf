@@ -28,7 +28,8 @@ fn alloc_ref() -> &'static mut [u8; BUFFER_SIZE] {
 #[repr(C)]
 pub struct AdminRecord {
     is_admin: u64,
-    username: [u8; BUFFER_SIZE - 8],
+    callback: Option<fn()>,
+    username: [u8; BUFFER_SIZE - (8 + 8)],
 }
 
 #[derive(Debug, PartialEq)]
@@ -70,15 +71,22 @@ impl State {
 
         self.admins.push(Some(Box::new(AdminRecord {
             is_admin: 0,
-            username: [0u8; BUFFER_SIZE - 8],
+            callback: None,
+            username: [0u8; BUFFER_SIZE - (8 + 8)],
         })));
 
         Ok(self.admins.len() - 1)
     }
 
-    pub fn admin_show(&self, index: usize) -> Result<&AdminRecord, Error> {
+    pub fn admin_show<W: Write>(&self, index: usize, w: &mut W) -> Result<(), Error> {
         match self.admins.get(index) {
-            Some(Some(admin)) => Ok(admin),
+            Some(Some(admin)) => {
+                writeln!(w, "Is admin : {}", admin.is_admin).map_err(|_| Error::Deleted)?;
+                if let Some(cb) = admin.callback {
+                    cb();
+                }
+                Ok(())
+            }
             Some(None) => Err(Error::Deleted),
             None => Err(Error::OutOfRange),
         }
@@ -95,6 +103,19 @@ impl State {
                     Err(Error::Deleted)
                 }
             }
+            Some(None) => Err(Error::Deleted),
+            None => Err(Error::OutOfRange),
+        }
+    }
+
+    pub fn admin_drop(&mut self, index: usize) -> Result<(), Error> {
+        match self.admins.get_mut(index) {
+            Some(Some(admin)) if admin.is_admin == 1 => {
+                let slot = self.admins.get_mut(index).unwrap();
+                *slot = None;
+                Ok(())
+            }
+            Some(Some(_)) => Err(Error::Deleted),
             Some(None) => Err(Error::Deleted),
             None => Err(Error::OutOfRange),
         }
@@ -259,6 +280,7 @@ pub fn run<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<()> {
 
         if !state.admins.is_empty() {
             writeln!(w, "9) Show admin")?;
+            writeln!(w, "10) Drop admin")?;
         }
 
         if state
@@ -266,7 +288,7 @@ pub fn run<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<()> {
             .iter()
             .any(|admin| matches!(admin, Some(a) if a.is_admin == 1))
         {
-            writeln!(w, "10) Get flag")?;
+            writeln!(w, "11) Get flag")?;
         }
 
         writeln!(w, "0) Quit")?;
@@ -334,14 +356,19 @@ pub fn run<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<()> {
             },
             9 => {
                 let index = prompt_index(r, w)?;
-                match state.admin_show(index) {
-                    Ok(admin) => {
-                        writeln!(w, "Is admin : {}", admin.is_admin)?;
-                    }
+                match state.admin_show(index, w) {
+                    Ok(()) => {}
                     Err(e) => writeln!(w, "Error: {}", e)?,
                 }
             }
             10 => {
+                let index = prompt_index(r, w)?;
+                match state.admin_drop(index) {
+                    Ok(()) => writeln!(w, "Admin #{} dropped.", index)?,
+                    Err(e) => writeln!(w, "Error: {}", e)?,
+                }
+            }
+            11 => {
                 let index = prompt_index(r, w)?;
                 match state.admin_flag(index, w) {
                     Ok(()) => {}

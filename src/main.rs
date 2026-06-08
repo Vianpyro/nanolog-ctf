@@ -15,7 +15,9 @@ const WELCOME_MESSAGE: &str = "\
 ";
 
 fn main() -> io::Result<()> {
-    std::env::var("FLAG").expect("FLAG environment variable not set -- refusing to start");
+    std::env::var("FLAG1").expect("FLAG1 environment variable not set -- refusing to start");
+    std::env::var("FLAG2").expect("FLAG2 environment variable not set -- refusing to start");
+    std::env::var("FLAG3").expect("FLAG3 environment variable not set -- refusing to start");
 
     println!("{WELCOME_MESSAGE}");
 
