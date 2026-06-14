@@ -77,6 +77,7 @@ jobs:
           test -f libc.so.6
           test -f ld-linux-x86-64.so.2
           test -f rust-toolchain.toml
+          test -f Cargo.toml
           test -f src/lib.rs
           test -f src/main.rs
 
@@ -108,6 +109,7 @@ jobs:
 
           cp target/release/nanolog dist/
 
+          cp Cargo.toml dist/
           cp src/lib.rs dist/src/
           cp src/main.rs dist/src/
 
