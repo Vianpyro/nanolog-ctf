@@ -2,16 +2,16 @@
 
 ## Write-up (FR)
 
-### Point de depart
+### Point de départ
 
-Le Flag 1 a etabli un fait essentiel : une reference suspendue (`ref`) et un
-`AdminRecord` alloue ensuite peuvent **partager le meme bloc memoire**, car
-`alloc_ref()` libere son `Box` tout en conservant une reference de duree de vie
-`'static` (le trou de soundness de `cache_ref`). Ecrire dans le `ref` modifie
-donc l'`AdminRecord` aliase.
+Le Flag 1 a établi un fait essentiel : une référence suspendue (`ref`) et un
+`AdminRecord` alloué ensuite peuvent **partager le même bloc mémoire**, car
+`alloc_ref()` libère son `Box` tout en conservant une référence de durée de vie
+`'static` (le trou de soundness de `cache_ref`). Écrire dans le `ref` modifie
+donc l'`AdminRecord` aliasé.
 
-Pour le Flag 1, on s'est servi de cette primitive pour ecrire `is_admin = 1`.
-La question devient : que peut-on faire de plus avec la meme primitive ?
+Pour le Flag 1, on s'est servi de cette primitive pour écrire `is_admin = 1`.
+La question devient : que peut-on faire de plus avec la même primitive ?
 
 ### Analyse du code : un appel indirect
 
@@ -34,15 +34,15 @@ pub fn admin_show<W: Write>(&self, index: usize, w: &mut W) -> Result<(), Error>
 }
 ```
 
-Si `admin.callback` contient `Some(fonction)`, cette fonction est **appelee**.
-Controler la valeur de `callback`, c'est controler le flot d'execution.
+Si `admin.callback` contient `Some(fonction)`, cette fonction est **appelée**.
+Contrôler la valeur de `callback`, c'est contrôler le flot d'exécution.
 
 L'objectif devient :
 
-> Ecrire l'adresse d'une fonction utile dans `admin.callback`,
-> puis declencher `admin_show` pour l'executer.
+> Écrire l'adresse d'une fonction utile dans `admin.callback`,
+> puis déclencher `admin_show` pour l'exécuter.
 
-### Analyse de la structure : la disposition memoire
+### Analyse de la structure : la disposition mémoire
 
 ```rs
 #[repr(C)]
@@ -53,13 +53,13 @@ pub struct AdminRecord {
 }
 ```
 
-`#[repr(C)]` fixe la disposition : `is_admin` a l'offset 0, `callback` a
-l'offset 8. Pour le Flag 1, on ecrivait a l'offset 0. Ici, c'est l'offset 8 qui
-nous interesse.
+`#[repr(C)]` fixe la disposition : `is_admin` à l'offset 0, `callback` à
+l'offset 8. Pour le Flag 1, on écrivait à l'offset 0. Ici, c'est l'offset 8 qui
+nous intéresse.
 
-### Le point cle : comment Rust represente `Option<fn>`
+### Le point clé : comment Rust représente `Option<fn>`
 
-C'est ici que se trouve le coeur du challenge.
+C'est ici que se trouve le cœur du challenge.
 
 Un `Option<u32>` occupe normalement plus de place que `u32`, car Rust doit
 stocker un *discriminant* indiquant si la valeur est `Some` ou `None`. Mais pour
@@ -67,28 +67,28 @@ stocker un *discriminant* indiquant si la valeur est `Some` ou `None`. Mais pour
 
 Un pointeur de fonction est **garanti non-nul** par Rust. Le compilateur exploite
 cette garantie via la *niche optimization* : il utilise la valeur impossible
-(zero) pour encoder `None`, et n'a donc besoin d'**aucun octet supplementaire**.
+(zéro) pour encoder `None`, et n'a donc besoin d'**aucun octet supplémentaire**.
 
-Concretement, le champ `callback` fait exactement 8 octets, et :
+Concrètement, le champ `callback` fait exactement 8 octets, et :
 
 ```text
 callback = 0x0000000000000000   <=>   None
 callback = <adresse non nulle>  <=>   Some(cette_adresse)
 ```
 
-La consequence est decisive :
+La conséquence est décisive :
 
-> Ecrire 8 octets non-nuls a l'offset 8 fabrique un `Some(f)` -- alors que le
+> Écrire 8 octets non-nuls à l'offset 8 fabrique un `Some(f)` -- alors que le
 > code Rust n'a JAMAIS construit ce `Some`.
 
-C'est une confusion de type impossible a obtenir en Rust normal : on transforme
+C'est une confusion de type impossible à obtenir en Rust normal : on transforme
 des octets bruts (vue `ref`) en un `Option<fn>` valide et appelable (vue
-`AdminRecord`). Le meme bloc memoire est vu simultanement comme un tableau
-d'octets et comme une structure typee.
+`AdminRecord`). Le même bloc mémoire est vu simultanément comme un tableau
+d'octets et comme une structure typée.
 
 ### Trouver la cible : la fonction `win`
 
-Le code source contient une fonction qui n'est appelee nulle part :
+Le code source contient une fonction qui n'est appelée nulle part :
 
 ```rs
 fn win(_ctx: *const u8) {
@@ -98,19 +98,19 @@ fn win(_ctx: *const u8) {
 }
 ```
 
-`win` lit `/flag` et l'imprime. Elle n'est jamais invoquee par le programme :
-le seul moyen de l'atteindre est de detourner le flot d'execution vers elle.
+`win` lit `/flag` et l'imprime. Elle n'est jamais invoquée par le programme :
+le seul moyen de l'atteindre est de détourner le flot d'exécution vers elle.
 
-Si on ecrit `&win` dans `callback`, alors `admin_show` executera `win` et le
-flag s'imprime. Il reste a connaitre l'adresse de `win`.
+Si on écrit `&win` dans `callback`, alors `admin_show` exécutera `win` et le
+flag s'imprime. Il reste à connaître l'adresse de `win`.
 
 ### L'obstacle : PIE et randomisation d'adresse
 
-Le binaire est compile en PIE (*Position Independent Executable*) : son adresse
-de base change a chaque execution (ASLR). On ne peut donc pas ecrire l'adresse
+Le binaire est compilé en PIE (*Position Independent Executable*) : son adresse
+de base change à chaque exécution (ASLR). On ne peut donc pas écrire l'adresse
 de `win` en dur -- il faut d'abord **fuir** l'adresse de base du binaire.
 
-C'est la qu'intervient un detail de `admin_new` :
+C'est là qu'intervient un détail de `admin_new` :
 
 ```rs
 self.admins.push(Some(Box::new(AdminRecord {
@@ -120,24 +120,24 @@ self.admins.push(Some(Box::new(AdminRecord {
 })));
 ```
 
-Le callback par defaut n'est pas `None` mais `Some(banner)`, ou `banner` est une
-fonction inoffensive du binaire. Donc, des la creation, l'offset 8 de
+Le callback par défaut n'est pas `None` mais `Some(banner)`, où `banner` est une
+fonction inoffensive du binaire. Donc, dès la création, l'offset 8 de
 l'`AdminRecord` contient l'**adresse runtime de `banner`** -- un pointeur de code.
 
-Grace au UAF, on lit cette adresse via la vue `ref` :
+Grâce au UAF, on lit cette adresse via la vue `ref` :
 
 1. `New ref`    -> `ref[0]` aliase un chunk A
-2. `New admin`  -> `admin[0]` reutilise A ; offset 8 = `&banner` (runtime)
+2. `New admin`  -> `admin[0]` réutilise A ; offset 8 = `&banner` (runtime)
 3. `Show ref 0` -> hexdump du chunk ; octets 8..16 = `&banner`
 
 L'adresse statique de `banner` (son offset dans le binaire, hors ASLR) se lit
-par desassemblage du binaire fourni. On en deduit la base :
+par désassemblage du binaire fourni. On en déduit la base :
 
 ```text
 base_PIE = banner_runtime - offset_statique(banner)
 ```
 
-Verification : `base_PIE` doit etre alignee sur une page (`% 0x1000 == 0`).
+Vérification : `base_PIE` doit être alignée sur une page (`% 0x1000 == 0`).
 
 ### Calcul de l'adresse de `win`
 
@@ -148,41 +148,39 @@ win_runtime = base_PIE + offset_statique(win)
 ```
 
 `offset_statique(win)` se lit, comme pour `banner`, dans le binaire. (Dans le
-binaire livre, strippe, `win` se reconnait a son appel a `read_to_string` /
+binaire livré, strippé, `win` se reconnaît à son appel à `read_to_string` /
 ouverture de `/flag`.)
 
 ### Forge du `Some(win)`
 
-On reecrit l'offset 8 du chunk avec l'adresse de `win`, via la vue `ref` :
+On réécrit l'offset 8 du chunk avec l'adresse de `win`, via la vue `ref` :
 
 ```python
 payload[0:8]  = struct.pack("<Q", 1)            # is_admin (preserve)
 payload[8:16] = struct.pack("<Q", win_runtime)  # callback = Some(win)
 ```
 
-Cote `AdminRecord`, `callback` vaut maintenant `Some(win)`.
+Côté `AdminRecord`, `callback` vaut maintenant `Some(win)`.
 
-### Declenchement
+### Déclenchement
 
 `admin_show(0)` lit `Some(cb)` avec `cb == win`, et appelle `cb(ptr)`. `win`
 lit `/flag` et l'imprime.
 
-> Detail sur l'alignement : l'appel indirect saute a l'entree de `win`, une
-> fonction Rust ordinaire dont le prologue retablit l'alignement de pile avant
-> tout appel interne. Viser une fonction du binaire (plutot que `system()` de la
-> libc, sensible a l'alignement de pile) evite tout probleme d'execution.
+> Détail sur l'alignement : l'appel indirect saute à l'entrée de `win`, une
+> fonction Rust ordinaire dont le prologue rétablit l'alignement de pile avant
+> tout appel interne. Viser une fonction du binaire (plutôt que `system()` de la
+> libc, sensible à l'alignement de pile) évite tout problème d'exécution.
 
 ### Construction de l'exploit
 
-1. Creer une reference suspendue (`New ref`).
-2. Creer un administrateur (`New admin`) -> callback = `Some(banner)`.
+1. Créer une référence suspendue (`New ref`).
+2. Créer un administrateur (`New admin`) -> callback = `Some(banner)`.
 3. Lire l'offset 8 via `Show ref` -> fuite de `&banner` -> base PIE.
-4. (Flag 1) Ecrire `is_admin = 1` a l'offset 0.
+4. (Flag 1) Écrire `is_admin = 1` à l'offset 0.
 5. Calculer `&win = base_PIE + offset(win)`.
-6. Ecrire `&win` a l'offset 8 -> forge `Some(win)`.
-7. Declencher via `Show admin` -> `win()` imprime le flag.
-
----
+6. Écrire `&win` à l'offset 8 -> forge `Some(win)`.
+7. Déclencher via `Show admin` -> `win()` imprime le flag.
 
 ## Write-up (EN)
 
@@ -319,12 +317,10 @@ payload[8:16] = struct.pack("<Q", win_runtime)  # callback = Some(win)
 6. Write `&win` at offset 8 -> forge `Some(win)`.
 7. Trigger via `Show admin` -> `win()` prints the flag.
 
----
-
 ## Exploit
 
 Le service lit des octets bruts via `prompt_bytes`. Les offsets statiques de
-`banner` et `win` sont lus depuis un binaire de reference non-strippe (profil
+`banner` et `win` sont lus depuis un binaire de référence non-strippé (profil
 `release-syms`), ce qui garde l'exploit reproductible.
 
 ```python
