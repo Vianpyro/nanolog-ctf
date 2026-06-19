@@ -25,7 +25,7 @@ fn banner(_ctx: *const u8) {}
 
 fn win(_ctx: *const u8) {
     use std::io::Write;
-    if let Ok(flag) = std::fs::read_to_string("/flag") {
+    if let Ok(flag) = std::fs::read_to_string("/flag2") {
         let stdout = std::io::stdout();
         let mut h = stdout.lock();
         let _ = writeln!(h, "{}", flag.trim());

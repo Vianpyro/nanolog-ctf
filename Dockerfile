@@ -10,7 +10,7 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 ARG FLAG2
-RUN printf '%s\n' "${FLAG2}" > /flag && chmod 444 /flag
+RUN printf '%s\n' "${FLAG2}" > /flag2 && chmod 444 /flag2
 
 COPY . /build/
 WORKDIR /build
@@ -24,7 +24,7 @@ RUN apt-get update && apt-get install -y socat \
     && useradd -m -s /bin/bash ctf
 
 COPY --from=build /build/target/release/nanolog /challenge/nanolog
-COPY --from=build /flag /flag
+COPY --from=build /flag2 /flag2
 
 RUN chmod 755 /challenge/nanolog \
     && chown -R ctf:ctf /challenge

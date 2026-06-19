@@ -92,13 +92,13 @@ Le code source contient une fonction qui n'est appelée nulle part :
 
 ```rs
 fn win(_ctx: *const u8) {
-    if let Ok(flag) = std::fs::read_to_string("/flag") {
+    if let Ok(flag) = std::fs::read_to_string("/flag2") {
         // imprime le flag
     }
 }
 ```
 
-`win` lit `/flag` et l'imprime. Elle n'est jamais invoquée par le programme :
+`win` lit `/flag2` et l'imprime. Elle n'est jamais invoquée par le programme :
 le seul moyen de l'atteindre est de détourner le flot d'exécution vers elle.
 
 Si on écrit `&win` dans `callback`, alors `admin_show` exécutera `win` et le
@@ -149,7 +149,7 @@ win_runtime = base_PIE + offset_statique(win)
 
 `offset_statique(win)` se lit, comme pour `banner`, dans le binaire. (Dans le
 binaire livré, strippé, `win` se reconnaît à son appel à `read_to_string` /
-ouverture de `/flag`.)
+ouverture de `/flag2`.)
 
 ### Forge du `Some(win)`
 
@@ -165,7 +165,7 @@ Côté `AdminRecord`, `callback` vaut maintenant `Some(win)`.
 ### Déclenchement
 
 `admin_show(0)` lit `Some(cb)` avec `cb == win`, et appelle `cb(ptr)`. `win`
-lit `/flag` et l'imprime.
+lit `/flag2` et l'imprime.
 
 > Détail sur l'alignement : l'appel indirect saute à l'entrée de `win`, une
 > fonction Rust ordinaire dont le prologue rétablit l'alignement de pile avant
@@ -253,13 +253,13 @@ The source contains a function called nowhere:
 
 ```rs
 fn win(_ctx: *const u8) {
-    if let Ok(flag) = std::fs::read_to_string("/flag") {
+    if let Ok(flag) = std::fs::read_to_string("/flag2") {
         // prints the flag
     }
 }
 ```
 
-`win` reads and prints `/flag`. The only way to reach it is to hijack control
+`win` reads and prints `/flag2`. The only way to reach it is to hijack control
 flow into it. Writing `&win` into `callback` makes `admin_show` execute `win`.
 
 ### The obstacle: PIE and ASLR
@@ -289,7 +289,7 @@ win_runtime = base_PIE + static_offset(win)
 ```
 
 In the stripped shipped binary, identify `win` by its `read_to_string` /
-`/flag` open call.
+`/flag2` open call.
 
 ### Forging `Some(win)`
 
@@ -300,7 +300,7 @@ payload[8:16] = struct.pack("<Q", win_runtime)  # callback = Some(win)
 
 ### Trigger
 
-`admin_show(0)` calls `cb(ptr)` with `cb == win`; `win` prints `/flag`.
+`admin_show(0)` calls `cb(ptr)` with `cb == win`; `win` prints `/flag2`.
 
 > Alignment note: the indirect call lands at `win`'s entry, an ordinary Rust
 > function whose prologue restores stack alignment before any inner call.
@@ -393,7 +393,7 @@ log.success(f"Flag 1 : {p.recvline().strip().decode()}")
 # Flag 2 : forge Some(win) a l'offset 8
 payload[8:16] = struct.pack("<Q", win_rt)
 edit_ref(p, 0, bytes(payload))
-p.sendline(b"9")               # admin_show -> cb == win -> imprime /flag
+p.sendline(b"9")               # admin_show -> cb == win -> imprime /flag2
 p.sendlineafter(b"Enter index: ", b"0")
 
 data = p.recvall(timeout=3)
