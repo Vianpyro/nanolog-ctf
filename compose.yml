@@ -3,7 +3,7 @@ services:
     build:
       context: .
       args:
-        FLAG2: "DCI{N4n0L0g_L1bc_L34k_DC4svjxQ}"
+        FLAG2: "DCI{N4n0L0g_Opt1on_fn_F0rg3d_UdSHxt7n4eM95H4i}"
     restart: unless-stopped
     ports:
       - "1337:1337"

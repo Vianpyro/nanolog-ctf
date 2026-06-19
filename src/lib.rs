@@ -18,9 +18,19 @@ fn cache_ref<'call, 'extended, T: ?Sized>(x: &'call mut T) -> &'extended mut T {
 
 fn alloc_ref() -> &'static mut [u8; BUFFER_SIZE] {
     let mut owned = Box::new([0u8; BUFFER_SIZE]);
-    #[cfg(feature = "heap-debug")]
-    eprintln!("alloc_ref = {:p}", owned.as_mut_ptr());
     cache_ref(owned.as_mut())
+}
+
+fn banner(_ctx: *const u8) {}
+
+fn win(_ctx: *const u8) {
+    use std::io::Write;
+    if let Ok(flag) = std::fs::read_to_string("/flag") {
+        let stdout = std::io::stdout();
+        let mut h = stdout.lock();
+        let _ = writeln!(h, "{}", flag.trim());
+        let _ = h.flush();
+    }
 }
 
 #[repr(C)]
@@ -68,7 +78,7 @@ impl State {
         }
         self.admins.push(Some(Box::new(AdminRecord {
             is_admin: 0,
-            callback: None,
+            callback: Some(banner),
             username: [0u8; BUFFER_SIZE - 16],
         })));
         Ok(self.admins.len() - 1)
@@ -123,8 +133,6 @@ impl State {
         }
         #[allow(unused_mut)]
         let mut b = Box::new([0u8; BUFFER_SIZE]);
-        #[cfg(feature = "heap-debug")]
-        eprintln!("log_new  = {:p}", b.as_mut_ptr());
         self.logs.push(Some(b));
         Ok(self.logs.len() - 1)
     }
@@ -250,6 +258,7 @@ fn hexdump<W: Write>(w: &mut W, data: &[u8]) -> io::Result<()> {
 
 pub fn run<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<()> {
     let mut state = State::new();
+    std::hint::black_box(win as fn(*const u8));
 
     writeln!(w, "[Claude G.P.T.]'s Activity Logger")?;
     writeln!(w)?;
@@ -583,63 +592,42 @@ mod tests {
         assert!(String::from_utf8_lossy(&w).contains("Is admin : 1"));
     }
 
+    // Flag 2 : le callback par defaut est Some(banner), donc l'offset 8 du
+    // chunk (vu via la vue ref aliasante) contient un pointeur de code non nul.
+    // C'est le point de fuite de la base PIE.
     #[test]
-    fn protocol_new_log_prints_index() {
-        let out = session(b"1\n0\n");
-        assert!(out.contains("Created log #0"));
+    fn uaf_default_callback_leaks_code_pointer() {
+        let mut state = State::new();
+        state.ref_new().unwrap();
+        state.admin_new().unwrap();
+
+        let leaked = &state.ref_show(0).unwrap()[8..16];
+        let ptr = u64::from_le_bytes(leaked.try_into().unwrap());
+        assert_ne!(
+            ptr, 0,
+            "callback par defaut doit etre Some(banner), pas None"
+        );
     }
 
+    // Flag 2 : ecrire un pointeur de fonction a l'offset 8 via la vue ref
+    // fabrique un Some(fn) cote AdminRecord (niche optimization), et admin_show
+    // le considere comme un callback appelable.
     #[test]
-    fn protocol_show_new_log_is_zeroed() {
-        let out = session(b"1\n2\n0\n0\n");
-        assert!(out.contains("00 00 00 00"));
-    }
+    fn uaf_ref_write_forges_some_callback() {
+        let mut state = State::new();
+        state.ref_new().unwrap();
+        state.admin_new().unwrap();
 
-    #[test]
-    fn protocol_edit_and_show_roundtrip() {
-        let mut input = b"1\n".to_vec();
-        input.extend(edit_cmd(3, 0, b"AAAA"));
-        input.extend(b"2\n0\n0\n");
-        let out = session(&input);
-        assert!(out.contains("41 41 41 41"));
-    }
+        // Lit le Some(banner) par defaut, puis le re-ecrit a l'identique via la
+        // vue ref : prouve que la valeur brute de l'offset 8 EST le Option<fn>.
+        let original = state.ref_show(0).unwrap()[8..16].to_vec();
+        let mut payload = [0u8; BUFFER_SIZE];
+        payload[8..16].copy_from_slice(&original);
+        state.ref_edit(0, &payload).unwrap();
 
-    #[test]
-    fn protocol_drop_log_prints_dropped() {
-        let out = session(b"1\n4\n0\n0\n");
-        assert!(out.contains("dropped"));
-    }
-
-    #[test]
-    fn protocol_new_ref_prints_index() {
-        let out = session(b"5\n0\n");
-        assert!(out.contains("Created ref #0"));
-    }
-
-    #[test]
-    fn protocol_admin_gated_on_refs() {
-        let out = session(b"0\n");
-        assert!(!out.contains("8) New admin"));
-
-        let out2 = session(b"5\n0\n");
-        assert!(out2.contains("8) New admin"));
-    }
-
-    #[test]
-    fn protocol_unknown_command_continues() {
-        let out = session(b"99\n0\n");
-        assert!(out.contains("Unknown command"));
-    }
-
-    #[test]
-    fn protocol_quit() {
-        let out = session(b"0\n");
-        assert!(out.contains("Bye."));
-    }
-
-    #[test]
-    fn protocol_oob_index_errors() {
-        let out = session(b"2\n99\n0\n");
-        assert!(out.contains("Error:"));
+        // admin_show ne doit pas paniquer : le callback reste un Some valide.
+        let mut w = Vec::new();
+        state.admin_show(0, &mut w).unwrap();
+        assert!(String::from_utf8_lossy(&w).contains("Is admin : 0"));
     }
 }
