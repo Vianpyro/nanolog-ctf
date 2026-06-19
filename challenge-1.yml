@@ -3,7 +3,7 @@ author: Vianpyro
 category: PWN
 
 description: |
-  🇫🇷 Les moniteurs ont retrouvé une copie de NanoLog sur un ancien ordinateur de Claude.
+  Les moniteurs ont retrouvé une copie de NanoLog sur un ancien ordinateur de Claude.
 
   Les journaux semblent avoir été effacés peu avant sa disparition.
 
@@ -11,7 +11,7 @@ description: |
 
   Si Claude a réellement découvert un moyen d'arrêter les nanobots, il est possible qu'une trace subsiste encore quelque part dans le programme.
 
-  🇬🇧 The camp counselors recovered a copy of NanoLog from one of Claude's old computers.
+  The camp counselors recovered a copy of NanoLog from one of Claude's old computers.
 
   The logs appear to have been erased shortly before the disappearance.
 
@@ -29,15 +29,9 @@ extra:
   decay: 100
   minimum: 20
 
-image: ghcr.io/vianpyro/nanolog-ctf:latest
-
 protocol: tcp
 host: null
 connection_info: nc <host> 1337
-
-solution:
-  path: solution/README.md
-  state: hidden
 
 flags:
   - {
@@ -53,15 +47,11 @@ topics:
   - rust
 
 tags:
-  - rust
+  - pwn
+  - A:Vianpyro
 
 files:
-  - nanolog-flag2.3.tar.gz
-
-hints:
-  - content: "Rust garantit la sûreté mémoire *si et seulement si* le compilateur accepte votre code pour les bonnes raisons."
+  - unsound-memories.zip
 
 next:
   name: Deeper Memories
-
-version: "2.3"
