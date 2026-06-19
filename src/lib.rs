@@ -205,10 +205,12 @@ fn prompt_index<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<usize>
 }
 
 fn prompt_bytes<R: BufRead, W: Write>(r: &mut R, w: &mut W) -> io::Result<Vec<u8>> {
-    write!(w, "Enter data (hex): ")?;
+    write!(w, "Enter length: ")?;
     w.flush()?;
     let n: usize = read_line(r)?.trim().parse().unwrap_or(0);
     let n = n.clamp(1, BUFFER_SIZE);
+    write!(w, "Enter {n} raw bytes: ")?;
+    w.flush()?;
     let mut buf = vec![0u8; n];
     r.read_exact(&mut buf)?;
     let mut discard = String::new();
