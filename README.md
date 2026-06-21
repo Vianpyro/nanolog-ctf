@@ -2,10 +2,10 @@
 
 > **DCI Summer Camp 2026** -- catégorie **PWN** -- auteur [Vianpyro](https://github.com/Vianpyro)
 
-Un challenge d'exploitation de tas écrit en **Rust**, **sans un seul `unsafe`**, qui
+Un challenge d'exploitation de heap écrit en **Rust**, **sans un seul `unsafe`**, qui
 exploite un véritable trou de soundness du compilateur Rust (coercion de durées
-de vie via variance) pour fabriquer un Use-After-Free. Deux flags, une seule
-primitive.
+de vie via variance) pour fabriquer un [Use-After-Free](https://en.wikipedia.org/wiki/Dangling_pointer). 
+Deux flags, une seule primitive.
 
 ## 🇫🇷 Le défi
 
@@ -36,9 +36,10 @@ compilateur encode `None` avec la valeur zéro (*niche optimization*) -- pas
 d'octet de discriminant. Écrire 8 octets non-nuls à l'offset 8 **fabrique un
 `Some(f)` que le code Rust n'a jamais construit**.
 
-Le binaire est PIE, donc il faut d'abord fuiter la base : le callback par défaut
-est `Some(banner)`, et lire l'offset 8 via la vue `ref` donne l'adresse runtime
-de `banner`. On en déduit la base, on calcule l'adresse de la fonction cachée
+Le binaire est [PIE](https://en.wikipedia.org/wiki/Position-independent_code),
+donc il faut d'abord fuiter la base : le callback par défaut est `Some(banner)`,
+et lire l'offset 8 via la vue `ref` donne l'adresse runtime de `banner`.
+On en déduit la base, on calcule l'adresse de la fonction cachée
 `win` (qui lit `/flag2`), on forge `Some(win)` à l'offset 8, et `admin_show`
 exécute le tout.
 
