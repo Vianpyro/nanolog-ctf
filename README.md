@@ -15,7 +15,7 @@ source complet est distribué : c'est volontaire. Tout l'intérêt du challenge 
 qu'aucun mot-clé `unsafe` n'apparaît, alors que le programme contient malgré tout
 un comportement indéfini bien réel.
 
-### Flag 1 -- `Admin Bypass` (`CFSS:0.3/TS:I/E:L/HSFC:Y=7-12`=7)
+### Flag 1 -- `Admin Bypass` (`CFSS:0.3/TS:I/E:L/HSFC:Y=5-9`=**7**)
 
 La fonction `cache_ref` transforme une référence de durée de vie courte en une
 référence `'static` en abusant de la variance des lifetimes (le bug rustc
@@ -28,7 +28,7 @@ même taille, l'allocateur recycle le bloc libéré. La référence suspendue se
 retrouve à aliaser un `AdminRecord`. Il suffit alors d'écrire `is_admin = 1` à
 l'offset 0 via `ref_edit` pour débloquer le flag.
 
-### Flag 2 -- `Option<fn> niche hijack` (`CFSS:0.3/TS:A/E:H/HSFC:Y=13-20`=13)
+### Flag 2 -- `Option<fn> niche hijack` (`CFSS:0.3/TS:A/E:H/HSFC:Y=13-20`=**13**)
 
 Même primitive, cible plus profonde : le champ `callback: Option<fn(*const u8)>`
 à l'offset 8. Un pointeur de fonction étant garanti non-nul en Rust, le
